@@ -1,0 +1,61 @@
+# KisanAI OS - local / single-host production compose stack
+#
+# This is a convenience for running the backend with PostgreSQL and a
+# persistent media volume on one host. For managed production (e.g.
+# Render, Fly.io, Railway, a VPS behind Caddy/Nginx) follow DEPLOYMENT.md
+# instead - the same environment variables apply.
+#
+# Usage:
+#   cp .env.example .env   # then fill in SECRET_KEY, DB passwords, etc.
+#   docker compose up -d --build
+#   curl http://localhost:8000/health
+#
+# NEVER commit the real .env file.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-kisanai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kisanai}
+      POSTGRES_DB: ${POSTGRES_DB:-kisanai}
+    volumes:
+      - kisanai_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kisanai} -d ${POSTGRES_DB:-kisanai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_MODE: production
+      DEBUG: "false"
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in .env}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-kisanai}:${POSTGRES_PASSWORD:-kisanai}@db:5432/${POSTGRES_DB:-kisanai}
+      HOST: 0.0.0.0
+      PORT: 8000
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-}
+      UPLOAD_DIR: /app/media/uploads
+      MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-5}
+      # Optional AI model paths (mounted model files).
+      DISEASE_MODEL_PATH: ${DISEASE_MODEL_PATH:-}
+      PREDICTION_MODEL_PATH: ${PREDICTION_MODEL_PATH:-}
+      RECOMMENDATION_PROVIDER: ${RECOMMENDATION_PROVIDER:-rules}
+      RECOMMENDATION_MODEL_PATH: ${RECOMMENDATION_MODEL_PATH:-}
+    ports:
+      - "8000:8000"
+    volumes:
+      - kisanai_media:/app/media
+
+volumes:
+  kisanai_db:
+  kisanai_media:
