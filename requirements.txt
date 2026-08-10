@@ -1,22 +1,22 @@
-fastapi
-uvicorn[standard]
-pydantic
-sqlalchemy
-alembic
-pydantic-settings
-python-dotenv
-PyJWT
-bcrypt
-python-multipart
-email-validator
+fastapi==0.141.1
+uvicorn[standard]==0.52.1
+pydantic==2.13.4
+sqlalchemy==2.0.51
+alembic==1.19.1
+pydantic-settings==2.15.0
+python-dotenv==1.2.2
+PyJWT==2.13.0
+bcrypt==5.0.0
+python-multipart==0.0.32
+email-validator==2.3.0
 
 # Production database driver (PostgreSQL). Install only where the
 # deployed DATABASE_URL uses PostgreSQL; SQLite development is unaffected.
-psycopg[binary]
+psycopg[binary]==3.3.4
 
 # Production ASGI server (Linux only; the local Windows dev flow uses uvicorn).
-gunicorn
+gunicorn==26.0.0
 
 # Test dependencies (Phase 5.1)
-pytest
-httpx
+pytest==9.1.1
+httpx==0.28.1
