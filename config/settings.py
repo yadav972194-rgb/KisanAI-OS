@@ -78,12 +78,51 @@ class Settings(BaseSettings):
     ADMIN_PASSWORD: str = ""
 
     # ==========================
+    # OTP / SMS (Phase 3 OTP auth)
+    # ==========================
+
+    # Development convenience: when true the OTP code is never really
+    # sent - it is logged and returned in the API response as ``dev_otp``
+    # so local flows (and tests) can complete without an SMS provider.
+    # MUST be false in production (the production validator enforces this).
+    OTP_MOCK: bool = True
+
+    # Real SMS/OTP provider name ("mock", "console" or a future gateway).
+    # "console" prints the code to the server log, "mock" is equivalent
+    # but also returns dev_otp in the response. Production deployments
+    # must configure a real gateway provider.
+    OTP_PROVIDER: str = "mock"
+
+    OTP_LENGTH: int = 6
+    OTP_TTL_SECONDS: int = 300
+    OTP_COOLDOWN_SECONDS: int = 60
+    OTP_MAX_ATTEMPTS: int = 5
+    # Max OTP requests allowed per mobile number per sliding window.
+    OTP_REQUEST_LIMIT: int = 5
+    OTP_REQUEST_WINDOW_SECONDS: int = 900
+    # Max OTP requests allowed per client IP per sliding window. A secondary
+    # control that stops flooding many *different* numbers from one source;
+    # the per-mobile limits above remain the primary safeguard.
+    OTP_IP_REQUEST_LIMIT: int = 60
+
+    # Rate limiting (Phase 11 security): max login attempts per identity
+    # before temporary lockout, and the lockout window in seconds.
+    LOGIN_MAX_ATTEMPTS: int = 5
+    LOGIN_LOCKOUT_SECONDS: int = 900
+
+    # ==========================
     # Weather
     # ==========================
 
     WEATHER_LOCATION: str = "Sitapur"
     WEATHER_COUNTRY_CODE: str = "IN"
     WEATHER_CACHE_TTL_SECONDS: int = 600
+    # Optional fixed coordinates for WEATHER_LOCATION. When both are set,
+    # the geocoding lookup is skipped entirely, removing the most common
+    # source of Open-Meteo HTTP 429 (rate-limit) responses. Coordinates
+    # take precedence over the live geocoder and are never re-queried.
+    WEATHER_LATITUDE: float | None = None
+    WEATHER_LONGITUDE: float | None = None
 
     # ==========================
     # Image Upload
@@ -101,6 +140,14 @@ class Settings(BaseSettings):
     # MODEL_NOT_CONFIGURED status instead of a fake diagnosis.
     # NEVER sourced from client input.
     DISEASE_MODEL_PATH: str = ""
+
+    # Optional override for the disease-model labels file (one class name
+    # per line, in the model's output order). Empty = auto-derive a
+    # sibling "<model>.txt" file next to DISEASE_MODEL_PATH.
+    DISEASE_MODEL_LABELS: str = ""
+
+    # Square resize size (pixels) applied to the image before inference.
+    DISEASE_MODEL_INPUT_SIZE: int = 224
 
     # ==========================
     # AI Prediction Engine
@@ -172,6 +219,16 @@ class Settings(BaseSettings):
         if self.RELOAD:
             raise ValueError(
                 "RELOAD must be false/disabled in production mode"
+            )
+
+        if self.OTP_MOCK:
+            raise ValueError(
+                "OTP_MOCK must be false in production mode"
+            )
+
+        if (self.OTP_PROVIDER or "").lower() in {"mock", "console"}:
+            raise ValueError(
+                "OTP_PROVIDER must be a real SMS gateway in production mode"
             )
 
         return self

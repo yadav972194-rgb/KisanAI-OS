@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../core/constants/app_strings.dart';
 import '../../core/errors/api_exception.dart';
+import '../../core/errors/error_messages.dart';
 import '../../models/recommendation.dart';
 import '../../services/recommendations_api.dart';
 
@@ -25,8 +26,7 @@ class RecommendationsController extends ChangeNotifier {
       result = await _api.fetchRecommendations(input);
       state = RecommendationState.success;
     } on ApiException catch (e) {
-      errorMessage =
-          e.isNetwork ? AppStrings.connectionError : e.message;
+      errorMessage = errorMessageFor(e);
       state = RecommendationState.error;
     } catch (_) {
       errorMessage = AppStrings.genericError;

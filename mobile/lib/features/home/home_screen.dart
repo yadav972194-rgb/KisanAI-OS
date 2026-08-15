@@ -4,10 +4,12 @@ import 'package:provider/provider.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../auth/auth_controller.dart';
+import '../assistant/assistant_screen.dart';
 import '../crops/crops_screen.dart';
 import '../diagnosis/diagnosis_screen.dart';
 import '../diseases/diseases_screen.dart';
 import '../farmers/farmers_screen.dart';
+import '../my_farm/my_farm_screen.dart';
 import '../profile/profile_screen.dart';
 import '../recommendations/recommendations_screen.dart';
 import '../soils/soils_screen.dart';
@@ -27,6 +29,11 @@ class HomeScreen extends StatelessWidget {
     final user = auth.user;
 
     final cards = <_DashboardCard>[
+      _DashboardCard(
+        icon: Icons.agriculture_outlined,
+        label: AppStrings.myFarmCard,
+        screen: const MyFarmScreen(),
+      ),
       _DashboardCard(
         icon: Icons.wb_sunny_outlined,
         label: AppStrings.weatherCard,
@@ -51,6 +58,11 @@ class HomeScreen extends StatelessWidget {
         icon: Icons.auto_awesome_outlined,
         label: AppStrings.recommendationsCard,
         screen: const RecommendationsScreen(),
+      ),
+      _DashboardCard(
+        icon: Icons.forum_outlined,
+        label: AppStrings.assistantCard,
+        screen: const AssistantScreen(),
       ),
       _DashboardCard(
         icon: Icons.healing_outlined,

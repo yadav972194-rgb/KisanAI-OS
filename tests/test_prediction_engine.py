@@ -123,6 +123,7 @@ def test_prediction_validation_error_envelope(client, admin_headers):
     assert response.json() == {
         "success": False,
         "message": "Validation failed",
+        "code": "VALIDATION_ERROR",
     }
 
 

@@ -32,6 +32,13 @@ class UserRepository:
             select(User).where(User.username == username)
         )
 
+    def get_by_mobile(self, mobile):
+        if not mobile:
+            return None
+        return self.session.scalar(
+            select(User).where(User.mobile == mobile)
+        )
+
     def get_by_id(self, user_id):
         return self.session.get(User, user_id)
 

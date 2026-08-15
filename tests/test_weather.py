@@ -10,6 +10,8 @@ mapping, response shape, and authentication/authorization.
 
 import sqlite3
 from datetime import datetime
+from io import BytesIO
+from urllib.error import HTTPError
 
 import pytest
 
@@ -20,6 +22,7 @@ from config.core.services.weather_service import (
     WeatherService,
     WeatherServiceError,
 )
+from config.settings import settings
 from tests.conftest import TEST_DB_PATH
 
 
@@ -283,5 +286,209 @@ def test_weather_condition_mapping(client):
         assert service._weather_condition(61) == "Light Rain"
         assert service._weather_condition(95) == "Thunderstorm"
         assert service._weather_condition(999) == "Unknown"
+    finally:
+        service.repo.close()
+
+
+# ==========================================================
+# I. Service: fixed coordinates skip the geocoder
+# ==========================================================
+
+def test_configured_coordinates_skip_geocoder(client, monkeypatch):
+    monkeypatch.setattr(settings, "WEATHER_LATITUDE", 27.5719)
+    monkeypatch.setattr(settings, "WEATHER_LONGITUDE", 80.6856)
+
+    service = WeatherService(repo=WeatherRepository())
+    try:
+        calls = []
+
+        def _fail_geocode():
+            calls.append("called")
+            raise AssertionError("geocoder must not be queried")
+
+        monkeypatch.setattr(WeatherService, "_geocode", _fail_geocode)
+
+        latitude, longitude, name = service._get_coordinates()
+        assert latitude == 27.5719
+        assert longitude == 80.6856
+        assert name == "Sitapur"
+        assert calls == []
+    finally:
+        service.repo.close()
+        monkeypatch.undo()
+
+
+# ==========================================================
+# J. Service: geocoding result is cached after first lookup
+# ==========================================================
+
+def test_geocoding_result_is_cached(client, monkeypatch):
+    monkeypatch.setattr(settings, "WEATHER_LATITUDE", None)
+    monkeypatch.setattr(settings, "WEATHER_LONGITUDE", None)
+
+    service = WeatherService(repo=WeatherRepository())
+    try:
+        calls = []
+
+        def _fake_geocode(self):
+            calls.append("geocode")
+            return 27.5, 80.6, "Sitapur"
+
+        monkeypatch.setattr(WeatherService, "_geocode", _fake_geocode)
+
+        first = service._get_coordinates()
+        second = service._get_coordinates()
+        assert first == (27.5, 80.6, "Sitapur")
+        assert second == (27.5, 80.6, "Sitapur")
+        assert calls == ["geocode"]
+    finally:
+        service.repo.close()
+        monkeypatch.undo()
+
+
+# ==========================================================
+# L. Concurrent requests are deduplicated (single-flight)
+# ==========================================================
+
+def test_concurrent_get_weather_deduplicates_provider_fetch(
+    client, monkeypatch
+):
+    """When several callers hit a cold cache simultaneously, only one
+    live fetch reaches the provider; the others serve the fresh cache."""
+    import threading
+    import time
+
+    service = WeatherService(repo=WeatherRepository())
+    try:
+        calls = {"count": 0}
+
+        def _slow_fetch(self):
+            calls["count"] += 1
+            time.sleep(0.2)
+            return Weather(
+                location="Sitapur",
+                temperature=22.0,
+                humidity=60,
+                condition="Clear",
+                wind_speed=5.0,
+                updated_at=_now_string(),
+            )
+
+        monkeypatch.setattr(WeatherService, "_fetch_live", _slow_fetch)
+
+        results = []
+        errors = []
+
+        def _worker():
+            try:
+                results.append(service.get_weather()["temperature"])
+            except Exception as error:  # pragma: no cover - defensive
+                errors.append(error)
+
+        threads = [
+            threading.Thread(target=_worker) for _ in range(2)
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=10)
+
+        assert errors == []
+        assert results == [22.0, 22.0]
+        assert calls["count"] == 1
+    finally:
+        service.repo.close()
+        monkeypatch.undo()
+
+
+# ==========================================================
+# K. Service: transient 429 is retried, then fails cleanly
+# ==========================================================
+
+def test_get_json_retries_transient_429(client, monkeypatch):
+    calls = {"count": 0}
+
+    def _http_error(code):
+        return HTTPError(
+            "https://example.test",
+            code,
+            "error",
+            {},
+            BytesIO(b""),
+        )
+
+    class _FakeUrlopen:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            calls["count"] += 1
+            if calls["count"] < 3:
+                raise _http_error(429)
+            return b'{"ok": true}'
+
+    monkeypatch.setattr("config.core.services.weather_service.urlopen", lambda *a, **k: _FakeUrlopen())
+    monkeypatch.setattr("config.core.services.weather_service.Request", lambda *a, **k: None)
+    monkeypatch.setattr("time.sleep", lambda seconds: None)
+
+    service = WeatherService(repo=WeatherRepository())
+    try:
+        assert service._get_json("https://example.test", {}) == {"ok": True}
+        assert calls["count"] == 3
+    finally:
+        service.repo.close()
+
+
+def test_get_json_rate_limited_after_retries(client, monkeypatch):
+    def _http_error(code):
+        return HTTPError(
+            "https://example.test",
+            code,
+            "error",
+            {},
+            BytesIO(b""),
+        )
+
+    def _fail(*args, **kwargs):
+        raise _http_error(429)
+
+    monkeypatch.setattr("config.core.services.weather_service.urlopen", _fail)
+    monkeypatch.setattr("config.core.services.weather_service.Request", lambda *a, **k: None)
+    monkeypatch.setattr("time.sleep", lambda seconds: None)
+
+    service = WeatherService(repo=WeatherRepository())
+    try:
+        with pytest.raises(WeatherServiceError) as excinfo:
+            service._get_json("https://example.test", {})
+        assert "rate limited" in str(excinfo.value)
+    finally:
+        service.repo.close()
+
+
+def test_get_json_non_retryable_http_error(client, monkeypatch):
+    def _http_error(code):
+        return HTTPError(
+            "https://example.test",
+            code,
+            "error",
+            {},
+            BytesIO(b""),
+        )
+
+    def _fail(*args, **kwargs):
+        raise _http_error(500)
+
+    monkeypatch.setattr("config.core.services.weather_service.urlopen", _fail)
+    monkeypatch.setattr("config.core.services.weather_service.Request", lambda *a, **k: None)
+    monkeypatch.setattr("time.sleep", lambda seconds: None)
+
+    service = WeatherService(repo=WeatherRepository())
+    try:
+        with pytest.raises(WeatherServiceError) as excinfo:
+            service._get_json("https://example.test", {})
+        assert "HTTP error: 500" in str(excinfo.value)
     finally:
         service.repo.close()

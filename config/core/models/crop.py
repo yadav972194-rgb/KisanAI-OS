@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, String, UniqueConstraint
+from sqlalchemy import ForeignKey, Index, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from config.core.database import Base
@@ -22,9 +22,6 @@ class Crop(Base):
     """Crop Model"""
 
     __tablename__ = "crops"
-    __table_args__ = (
-        UniqueConstraint("crop_name", name="uq_crops_crop_name"),
-    )
 
     crop_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     farmer_id: Mapped[int | None] = mapped_column(
@@ -42,6 +39,19 @@ class Crop(Base):
     diseases: Mapped[list[Disease]] = relationship(
         back_populates="crop",
         passive_deletes=True,
+    )
+
+    __table_args__ = (
+        # A crop name is unique within one farm, while catalog rows
+        # (farmer_id NULL) stay globally unique. A plain composite unique
+        # constraint would treat SQLite NULLs as distinct, so enforce the
+        # rule with a COALESCE expression index (NULL -> 0, no farm has id 0).
+        Index(
+            "uq_crops_farmer_crop_name",
+            func.coalesce(farmer_id, 0),
+            crop_name,
+            unique=True,
+        ),
     )
 
     def to_dict(self):

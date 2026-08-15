@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../constants/app_strings.dart';
 import '../errors/api_exception.dart';
+import '../errors/error_messages.dart';
 
 /// Load state of a [ListController].
 enum ListLoadState { initial, loading, success, error }
@@ -26,7 +27,7 @@ class ListController<T> extends ChangeNotifier {
       items = await _loader();
       state = ListLoadState.success;
     } on ApiException catch (e) {
-      errorMessage = e.isNetwork ? AppStrings.connectionError : e.message;
+      errorMessage = errorMessageFor(e);
       state = ListLoadState.error;
     } catch (_) {
       errorMessage = AppStrings.genericError;

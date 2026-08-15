@@ -5,7 +5,10 @@ import 'core/image/picked_image.dart';
 import 'core/network/api_client.dart';
 import 'core/storage/token_storage.dart';
 import 'features/auth/auth_controller.dart';
+import 'features/auth/forgot_password_controller.dart';
+import 'features/assistant/assistant_controller.dart';
 import 'features/diagnosis/diagnosis_controller.dart';
+import 'features/my_farm/my_farm_controller.dart';
 import 'features/recommendations/recommendations_controller.dart';
 import 'features/weather/weather_controller.dart';
 import 'models/crop.dart';
@@ -13,10 +16,12 @@ import 'models/disease.dart';
 import 'models/farmer.dart';
 import 'models/soil.dart';
 import 'services/auth_api.dart';
+import 'services/assistant_api.dart';
 import 'services/crops_api.dart';
 import 'services/disease_detection_api.dart';
 import 'services/diseases_api.dart';
 import 'services/farmers_api.dart';
+import 'services/my_farm_api.dart';
 import 'services/recommendations_api.dart';
 import 'services/soils_api.dart';
 import 'services/weather_api.dart';
@@ -48,12 +53,16 @@ class AppDependencies {
   late final DiseasesApi diseasesApi = DiseasesApi(apiClient);
   late final DiseaseDetectionApi diseaseDetectionApi =
       DiseaseDetectionApi(apiClient);
+  late final MyFarmApi myFarmApi = MyFarmApi(apiClient);
   late final RecommendationsApi recommendationsApi =
       RecommendationsApi(apiClient);
+  late final AssistantApi assistantApi = AssistantApi(apiClient);
 
   late final ImagePickerFn imagePicker = pickImageFromGallery;
 
   late final AuthController authController = AuthController(authApi, tokenStorage);
+  late final ForgotPasswordController forgotPasswordController =
+      ForgotPasswordController(authApi);
   late final WeatherController weatherController = WeatherController(weatherApi);
   late final ListController<Crop> cropsController =
       ListController<Crop>(cropsApi.fetchCrops);
@@ -67,4 +76,7 @@ class AppDependencies {
       DiagnosisController(diseaseDetectionApi, imagePicker);
   late final RecommendationsController recommendationsController =
       RecommendationsController(recommendationsApi);
+  late final AssistantController assistantController =
+      AssistantController(assistantApi);
+  late final MyFarmController myFarmController = MyFarmController(myFarmApi);
 }

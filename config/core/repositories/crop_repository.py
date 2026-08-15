@@ -34,6 +34,14 @@ class CropRepository:
         statement = select(Crop).where(Crop.crop_name == crop_name)
         return self.session.scalar(statement)
 
+    def get_crop_by_farmer_and_name(self, farmer_id, crop_name):
+        statement = (
+            select(Crop)
+            .where(Crop.farmer_id == farmer_id)
+            .where(Crop.crop_name == crop_name)
+        )
+        return self.session.scalar(statement)
+
     def get_all_crops(self):
         statement = select(Crop).order_by(Crop.crop_id)
         return self.session.scalars(statement).all()

@@ -5,6 +5,8 @@ import '../../core/constants/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common_views.dart';
 import 'auth_controller.dart';
+import 'forgot_password_screen.dart';
+import 'register_screen.dart';
 
 /// Login form. Validates locally, then calls the real auth API.
 class LoginScreen extends StatefulWidget {
@@ -33,6 +35,25 @@ class _LoginScreenState extends State<LoginScreen> {
     await auth.login(
       _usernameController.text.trim(),
       _passwordController.text,
+    );
+  }
+
+  Future<void> _openRegister() async {
+    final username = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const RegisterScreen()),
+    );
+    if (username == null || !mounted) return;
+    _usernameController.text = username;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(content: Text(AppStrings.registrationSuccess)),
+      );
+  }
+
+  Future<void> _openForgotPassword() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
     );
   }
 
@@ -129,6 +150,27 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             )
                           : const Text(AppStrings.loginButton),
+                    ),
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: _openForgotPassword,
+                      child: const Text(AppStrings.forgotPasswordLink),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            AppStrings.noAccountHint,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: _openRegister,
+                          child: const Text(AppStrings.signUpLink),
+                        ),
+                      ],
                     ),
                   ],
                 ),

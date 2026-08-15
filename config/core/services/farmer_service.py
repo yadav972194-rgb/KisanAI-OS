@@ -29,8 +29,11 @@ class FarmerService:
             name=farmer_data["name"],
             mobile=mobile,
             village=farmer_data["village"],
+            block=farmer_data.get("block"),
             district=farmer_data["district"],
             state=farmer_data["state"],
+            country=farmer_data.get("country") or "India",
+            farm_size=farmer_data.get("farm_size"),
         )
 
         self.repo.insert_farmer(farmer)
@@ -95,8 +98,11 @@ class FarmerService:
             name=farmer_data["name"],
             mobile=mobile,
             village=farmer_data["village"],
+            block=farmer_data.get("block", existing.block),
             district=farmer_data["district"],
             state=farmer_data["state"],
+            country=farmer_data.get("country") or "India",
+            farm_size=farmer_data.get("farm_size", existing.farm_size),
         )
 
         self.repo.update_farmer(farmer)

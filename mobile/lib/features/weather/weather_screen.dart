@@ -33,7 +33,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
           IconButton(
             tooltip: AppStrings.refreshWeather,
             icon: const Icon(Icons.refresh),
-            onPressed: controller.isLoading ? null : controller.load,
+            onPressed: controller.isLoading ? null : controller.refresh,
           ),
         ],
       ),

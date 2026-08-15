@@ -5,7 +5,9 @@ import 'core/constants/app_strings.dart';
 import 'core/theme/app_theme.dart';
 import 'dependencies.dart';
 import 'features/auth/auth_controller.dart';
+import 'features/auth/forgot_password_controller.dart';
 import 'features/auth/login_screen.dart';
+import 'features/assistant/assistant_controller.dart';
 import 'features/diagnosis/diagnosis_controller.dart';
 import 'features/home/home_screen.dart';
 import 'features/recommendations/recommendations_controller.dart';
@@ -26,6 +28,9 @@ class KisanApp extends StatelessWidget {
         ChangeNotifierProvider<AuthController>.value(
           value: dependencies.authController,
         ),
+        ChangeNotifierProvider<ForgotPasswordController>.value(
+          value: dependencies.forgotPasswordController,
+        ),
         ChangeNotifierProvider<WeatherController>.value(
           value: dependencies.weatherController,
         ),
@@ -34,6 +39,9 @@ class KisanApp extends StatelessWidget {
         ),
         ChangeNotifierProvider<RecommendationsController>.value(
           value: dependencies.recommendationsController,
+        ),
+        ChangeNotifierProvider<AssistantController>.value(
+          value: dependencies.assistantController,
         ),
       ],
       child: MaterialApp(

@@ -12,11 +12,15 @@ from config.core.schemas.farmer import (
     FarmerCreate,
     FarmerOut,
     FarmerUpdate,
+    MyFarmCreate,
+    MyFarmUpdate,
 )
 from config.core.schemas.crop import (
     CropCreate,
     CropOut,
     CropUpdate,
+    MyFarmCropCreate,
+    MyFarmCropUpdate,
 )
 from config.core.schemas.soil import (
     SoilCreate,
@@ -46,8 +50,19 @@ from config.core.schemas.advisory import (
     AdvisoryOut,
     AdvisoryRequest,
 )
+from config.core.schemas.assistant import (
+    AssistantOut,
+    AssistantRequest,
+)
 from config.core.schemas.user import (
+    ForgotUsernameRequest,
+    OtpRegister,
+    OtpRequest,
+    OtpRequestOut,
+    OtpVerify,
+    ResetPasswordRequest,
     Token,
+    UsernameOut,
     UserCreate,
     UserOut,
     UserRoleUpdate,
@@ -60,9 +75,13 @@ __all__ = [
     "FarmerCreate",
     "FarmerOut",
     "FarmerUpdate",
+    "MyFarmCreate",
+    "MyFarmUpdate",
     "CropCreate",
     "CropOut",
     "CropUpdate",
+    "MyFarmCropCreate",
+    "MyFarmCropUpdate",
     "SoilCreate",
     "SoilOut",
     "SoilUpdate",
@@ -81,8 +100,17 @@ __all__ = [
     "RecommendationRequest",
     "AdvisoryOut",
     "AdvisoryRequest",
+    "AssistantOut",
+    "AssistantRequest",
     "UserCreate",
     "UserOut",
     "UserRoleUpdate",
     "Token",
+    "OtpRequest",
+    "OtpVerify",
+    "OtpRegister",
+    "OtpRequestOut",
+    "UsernameOut",
+    "ForgotUsernameRequest",
+    "ResetPasswordRequest",
 ]

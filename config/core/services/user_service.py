@@ -28,6 +28,7 @@ class UserService:
 
     def register_user(self, user_data):
         username = user_data.get("username", "").strip()
+        mobile = (user_data.get("mobile") or "").strip()
 
         if not username:
             return {
@@ -39,6 +40,12 @@ class UserService:
             return {
                 "success": False,
                 "message": "Username already exists",
+            }
+
+        if mobile and self.repo.get_by_mobile(mobile) is not None:
+            return {
+                "success": False,
+                "message": "Mobile number already registered",
             }
 
         role = user_data.get("role") or ROLE_FARMER
@@ -74,10 +81,40 @@ class UserService:
             "data": user.to_dict(),
         }
 
-    def authenticate_user(self, username, password):
-        """Verify credentials. Never exposes the stored hash."""
+    def _resolve_identity(self, identity):
+        """Resolve a user by username OR verified mobile number.
 
-        user = self.repo.get_by_username(username)
+        This backs strong mobile-number based authentication: a farmer can
+        log in with either their username or their 10-digit mobile number.
+        Mobile lookup only matches when the number belongs to an account;
+        unknown identities simply fail the same generic login error.
+        """
+        if not identity:
+            return None
+
+        identity = identity.strip()
+
+        user = self.repo.get_by_username(identity)
+        if user is not None:
+            return user
+
+        # A mobile-shaped identity can also be a username for some accounts,
+        # but the mobile column is the authoritative login alias.
+        if identity.isdigit():
+            user = self.repo.get_by_mobile(identity)
+            if user is not None:
+                return user
+
+        return None
+
+    def authenticate_user(self, identity, password):
+        """Verify credentials by username or mobile.
+
+        Never exposes the stored hash and never reveals which account, if
+        any, matched the supplied identity.
+        """
+
+        user = self._resolve_identity(identity)
 
         if user is None or not verify_password(
             password, user.hashed_password
@@ -97,6 +134,119 @@ class UserService:
             "success": True,
             "message": "Login Successful",
             "data": user,
+        }
+
+    def register_with_otp(self, otp_service, otp_data):
+        """Register an account after verifying the mobile OTP (Phase 3).
+
+        ``otp_data`` carries mobile + code + username + password. The
+        OTP is verified first; only then is the account created, so a
+        valid code cannot be replayed to create multiple accounts.
+        """
+        mobile = otp_data.get("mobile", "").strip()
+
+        verified = otp_service.verify_otp(
+            mobile,
+            "register",
+            otp_data.get("code"),
+        )
+
+        if not verified["success"]:
+            return {
+                "success": False,
+                "message": verified["message"],
+            }
+
+        otp_data = dict(otp_data)
+        otp_data["mobile"] = mobile
+        otp_data.setdefault("role", ROLE_FARMER)
+
+        result = self.register_user(otp_data)
+
+        if not result["success"]:
+            return result
+
+        # The mobile number was just verified through OTP, so the account
+        # is created with mobile_verified=True.
+        self.set_mobile_verified(mobile, True)
+
+        user = self.repo.get_by_mobile(mobile)
+        result["data"] = user.to_dict()
+
+        return result
+
+    def set_mobile_verified(self, mobile, verified=True):
+        """Mark a user's mobile number as OTP-verified (or not)."""
+        user = self.repo.get_by_mobile((mobile or "").strip())
+        if user is None:
+            return False
+        if bool(user.mobile_verified) != bool(verified):
+            user.mobile_verified = bool(verified)
+            self.repo.update(user)
+        return True
+
+    def get_username_by_otp(self, otp_service, data):
+        """Recover the username after verifying a mobile OTP."""
+        mobile = data.get("mobile", "").strip()
+
+        verified = otp_service.verify_otp(
+            mobile,
+            "forgot_username",
+            data.get("code"),
+        )
+
+        if not verified["success"]:
+            return {
+                "success": False,
+                "message": verified["message"],
+            }
+
+        user = self.repo.get_by_mobile(mobile)
+
+        if user is None:
+            return {
+                "success": False,
+                "message": "No account found for this mobile number",
+            }
+
+        return {
+            "success": True,
+            "message": "Username recovered successfully",
+            "username": user.username,
+        }
+
+    def reset_password(self, otp_service, data):
+        """Set a new password after verifying a mobile OTP."""
+        mobile = data.get("mobile", "").strip()
+
+        verified = otp_service.verify_otp(
+            mobile,
+            "forgot_password",
+            data.get("code"),
+        )
+
+        if not verified["success"]:
+            return {
+                "success": False,
+                "message": verified["message"],
+            }
+
+        user = self.repo.get_by_mobile(mobile)
+
+        if user is None:
+            return {
+                "success": False,
+                "message": "No account found for this mobile number",
+            }
+
+        user.hashed_password = hash_password(data["new_password"])
+        self.repo.update(user)
+
+        logger.info("Password reset completed for user id=%s", user.id)
+
+        return {
+            "success": True,
+            "message": "Password updated successfully",
         }
 
     def bootstrap_admin(self):

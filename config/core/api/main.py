@@ -13,16 +13,19 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from config.constants import ROLE_ADMIN
 from config.core.api.auth import get_current_user, require_role
 from config.core.controllers.advisory_controller import AdvisoryController
+from config.core.controllers.assistant_controller import AssistantController
 from config.core.controllers.farmer_controller import FarmerController
 from config.core.controllers.crop_controller import CropController
 from config.core.controllers.disease_controller import DiseaseController
 from config.core.controllers.disease_detection_controller import (
     DiseaseDetectionController,
 )
+from config.core.controllers.my_farm_controller import MyFarmController
 from config.core.controllers.prediction_controller import PredictionController
 from config.core.controllers.recommendation_controller import (
     RecommendationController,
@@ -34,6 +37,7 @@ from config.core.api.auth_routes import (
     router as auth_router,
     user_service as auth_user_service,
 )
+from config.core.api.location_routes import router as location_router
 from config.core.database import engine, get_db
 from config.core.exceptions import (
     AppError,
@@ -46,6 +50,8 @@ from config.settings import settings
 from config.core.schemas import (
     AdvisoryOut,
     AdvisoryRequest,
+    AssistantOut,
+    AssistantRequest,
     CropCreate,
     CropOut,
     CropUpdate,
@@ -57,6 +63,10 @@ from config.core.schemas import (
     FarmerOut,
     FarmerUpdate,
     MessageOut,
+    MyFarmCreate,
+    MyFarmCropCreate,
+    MyFarmCropUpdate,
+    MyFarmUpdate,
     PredictionOut,
     PredictionRequest,
     RecommendationOut,
@@ -124,6 +134,9 @@ if _origins:
 
 app.include_router(auth_router)
 
+# Location hierarchy: Country -> State -> District -> Block/Tehsil -> Village
+app.include_router(location_router)
+
 
 # ==========================================================
 # Error Mapping Helpers
@@ -142,7 +155,7 @@ def _ok(result):
         if "Not Found" in message:
             raise NotFoundError(message)
 
-        if "already exists" in message:
+        if "already" in message:
             raise ConflictError(message)
 
         raise AppError(message)
@@ -158,7 +171,7 @@ def _ok(result):
 async def not_found_handler(request: Request, exc: NotFoundError):
     return JSONResponse(
         status_code=exc.status_code,
-        content={"success": False, "message": exc.message},
+        content={"success": False, "message": exc.message, "code": exc.code},
     )
 
 
@@ -166,7 +179,7 @@ async def not_found_handler(request: Request, exc: NotFoundError):
 async def conflict_handler(request: Request, exc: ConflictError):
     return JSONResponse(
         status_code=exc.status_code,
-        content={"success": False, "message": exc.message},
+        content={"success": False, "message": exc.message, "code": exc.code},
     )
 
 
@@ -174,7 +187,7 @@ async def conflict_handler(request: Request, exc: ConflictError):
 async def app_error_handler(request: Request, exc: AppError):
     return JSONResponse(
         status_code=exc.status_code,
-        content={"success": False, "message": exc.message},
+        content={"success": False, "message": exc.message, "code": exc.code},
     )
 
 
@@ -182,7 +195,58 @@ async def app_error_handler(request: Request, exc: AppError):
 async def validation_handler(request: Request, exc: RequestValidationError):
     return JSONResponse(
         status_code=422,
-        content={"success": False, "message": "Validation failed"},
+        content={
+            "success": False,
+            "message": "Validation failed",
+            "code": "VALIDATION_ERROR",
+        },
+    )
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(
+    request: Request, exc: StarletteHTTPException
+):
+    """Shape every HTTPException into the stable error envelope.
+
+    Route-specific exceptions (auth ``_fail``, role checks, upload errors)
+    already carry ``{"success": False, "message": ..., "code": ...}`` in
+    ``detail``; those are passed through unchanged. Bare exceptions (e.g. a
+    route not found, or an unauthenticated request) receive a code based on
+    the status so the app can classify them.
+    """
+    detail = exc.detail
+    if isinstance(detail, dict):
+        content = detail
+    elif exc.status_code == 401:
+        content = {
+            "success": False,
+            "message": detail or "Not authenticated",
+            "code": "SESSION_EXPIRED",
+        }
+    elif exc.status_code == 404:
+        content = {
+            "success": False,
+            "message": detail or "Not Found",
+            "code": "NOT_FOUND",
+        }
+    elif exc.status_code == 405:
+        content = {
+            "success": False,
+            "message": detail or "Method not allowed",
+            "code": "VALIDATION_ERROR",
+        }
+    else:
+        content = {
+            "success": False,
+            "message": detail or "Request failed",
+            "code": "SERVER_ERROR",
+        }
+    # Keep the established ``{"detail": {...}}`` envelope so existing clients
+    # and tests that read ``body["detail"]["message"]`` keep working.
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": content},
     )
 
 
@@ -192,7 +256,11 @@ async def integrity_handler(request: Request, exc: IntegrityError):
                    request.method, request.url.path, exc.orig)
     return JSONResponse(
         status_code=409,
-        content={"success": False, "message": "Resource already exists"},
+        content={
+            "success": False,
+            "message": "Resource already exists",
+            "code": "CONFLICT",
+        },
     )
 
 
@@ -201,7 +269,11 @@ async def weather_error_handler(request: Request, exc: WeatherServiceError):
     logger.warning("WeatherServiceError on %s: %s", request.url.path, exc)
     return JSONResponse(
         status_code=502,
-        content={"success": False, "message": str(exc)},
+        content={
+            "success": False,
+            "message": str(exc),
+            "code": "SERVER_ERROR",
+        },
     )
 
 
@@ -214,7 +286,11 @@ async def disease_detection_error_handler(
     )
     return JSONResponse(
         status_code=502,
-        content={"success": False, "message": str(exc)},
+        content={
+            "success": False,
+            "message": str(exc),
+            "code": "MODEL_INVALID",
+        },
     )
 
 
@@ -223,7 +299,11 @@ async def prediction_error_handler(request: Request, exc: PredictionError):
     logger.warning("PredictionError on %s: %s", request.url.path, exc)
     return JSONResponse(
         status_code=502,
-        content={"success": False, "message": str(exc)},
+        content={
+            "success": False,
+            "message": str(exc),
+            "code": "SERVER_ERROR",
+        },
     )
 
 
@@ -234,7 +314,11 @@ async def recommendation_error_handler(
     logger.warning("RecommendationError on %s: %s", request.url.path, exc)
     return JSONResponse(
         status_code=502,
-        content={"success": False, "message": str(exc)},
+        content={
+            "success": False,
+            "message": str(exc),
+            "code": "SERVER_ERROR",
+        },
     )
 
 
@@ -244,7 +328,11 @@ async def unhandled_handler(request: Request, exc: Exception):
                      request.method, request.url.path)
     return JSONResponse(
         status_code=500,
-        content={"success": False, "message": "Internal server error"},
+        content={
+            "success": False,
+            "message": "Internal server error",
+            "code": "SERVER_ERROR",
+        },
     )
 
 
@@ -379,6 +467,103 @@ def delete_farmer(
     _admin: User = Depends(require_role(ROLE_ADMIN)),
 ):
     return _ok(FarmerController(db).delete_farmer(farmer_id))
+
+
+# ==========================================================
+# My Farm API (self-service for the authenticated farmer)
+# ==========================================================
+
+@app.get("/api/my-farm", response_model=FarmerOut)
+def get_my_farm(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return the logged-in user's own farm profile (404 when unset)."""
+    return _ok(MyFarmController(db).get_farm(current_user))
+
+
+@app.post("/api/my-farm", response_model=MessageOut)
+def create_my_farm(
+    data: MyFarmCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Create the logged-in user's farm. Name and mobile come from the
+    linked user account; the farmer supplies location and farm size."""
+    return _ok(MyFarmController(db).create_farm(
+        current_user,
+        data.model_dump(),
+    ))
+
+
+@app.put("/api/my-farm", response_model=MessageOut)
+def update_my_farm(
+    data: MyFarmUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update the logged-in user's farm. Only supplied fields change."""
+    return _ok(MyFarmController(db).update_farm(
+        current_user,
+        data.model_dump(exclude_unset=True),
+    ))
+
+
+@app.delete("/api/my-farm", response_model=MessageOut)
+def delete_my_farm(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete the logged-in user's farm and its dependent records."""
+    return _ok(MyFarmController(db).delete_farm(current_user))
+
+
+@app.get("/api/my-farm/crops", response_model=list[CropOut])
+def get_my_farm_crops(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List crops planted on the logged-in user's farm."""
+    return _ok(MyFarmController(db).get_crops(current_user))
+
+
+@app.post("/api/my-farm/crops", response_model=MessageOut)
+def create_my_farm_crop(
+    data: MyFarmCropCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Add a crop to the logged-in user's farm."""
+    return _ok(MyFarmController(db).add_crop(
+        current_user,
+        data.model_dump(),
+    ))
+
+
+@app.put("/api/my-farm/crops/{crop_id}", response_model=MessageOut)
+def update_my_farm_crop(
+    crop_id: int,
+    data: MyFarmCropUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update one of the logged-in user's own crops (404 if it belongs
+    to a different farm)."""
+    return _ok(MyFarmController(db).update_crop(
+        current_user,
+        crop_id,
+        data.model_dump(),
+    ))
+
+
+@app.delete("/api/my-farm/crops/{crop_id}", response_model=MessageOut)
+def delete_my_farm_crop(
+    crop_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete one of the logged-in user's own crops."""
+    return _ok(MyFarmController(db).delete_crop(current_user, crop_id))
 
 
 # ==========================================================
@@ -552,7 +737,7 @@ def get_weather(
     db: Session = Depends(get_db),
     _current: User = Depends(get_current_user),
 ):
-    return WeatherController(db).get_weather()
+    return WeatherController(session=db, current_user=_current).get_weather()
 
 
 # ==========================================================
@@ -662,6 +847,35 @@ def generate_recommendation(
     is ever returned.
     """
     return RecommendationController().recommend(data.model_dump())
+
+
+# ==========================================================
+# Assistant / Intent Router API
+# ==========================================================
+
+@app.post("/api/assistant", response_model=AssistantOut)
+def assistant_query(
+    data: AssistantRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Answer a free-text farmer query honestly.
+
+    The query is routed to a stable intent (CROP_STATUS, WEATHER,
+    MY_FARM, DISEASE_DETECTION, CROP_ADVICE, SOIL, AI_ADVICE, AUTH,
+    HELP or UNKNOWN). CROP_STATUS answers ONLY from verified data: the
+    authenticated user's stored farm and crops, live-or-cached weather,
+    and any soil/disease context supplied in the request. Missing data
+    returns INSUFFICIENT_DATA with a clear Hindi message - never a
+    guessed status. Other intents return honest pointers to the
+    matching screens.
+    """
+    return AssistantController(db).handle(
+        current_user,
+        data.text,
+        soil=data.soil,
+        disease=data.disease,
+    )
 
 
 # ==========================================================

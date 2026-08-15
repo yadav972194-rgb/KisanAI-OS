@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../core/constants/app_strings.dart';
 import '../../core/errors/api_exception.dart';
+import '../../core/errors/error_messages.dart';
 import '../../core/image/picked_image.dart';
 import '../../models/disease_detection.dart';
 import '../../services/disease_detection_api.dart';
@@ -49,8 +50,7 @@ class DiagnosisController extends ChangeNotifier {
       );
       state = DiagnosisState.success;
     } on ApiException catch (e) {
-      errorMessage =
-          e.isNetwork ? AppStrings.connectionError : e.message;
+      errorMessage = errorMessageFor(e);
       state = DiagnosisState.error;
     } catch (_) {
       errorMessage = AppStrings.genericError;

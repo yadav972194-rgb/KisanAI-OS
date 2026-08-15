@@ -267,7 +267,24 @@ def test_farmer_delete_sets_crop_farmer_null():
 # Alembic + integrity on the test database
 # ==========================================================
 
-def test_test_database_alembic_head_is_0004():
+def test_test_database_alembic_head_is_current():
+    """The test DB must sit exactly on the newest migration.
+
+    The head is read from the alembic script directory instead of being
+    hardcoded, so adding future migrations cannot silently leave the
+    assertion stale.
+    """
+    import os
+
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    cfg = Config(os.path.join(project_root, "alembic.ini"))
+    script = ScriptDirectory.from_config(cfg)
+    expected_head = script.get_current_head()
+    assert expected_head is not None
+
     conn = _raw_connection()
     try:
         version = conn.execute(
@@ -275,7 +292,7 @@ def test_test_database_alembic_head_is_0004():
         ).fetchone()[0]
     finally:
         conn.close()
-    assert version == "0004"
+    assert version == expected_head
 
 
 def test_test_database_integrity_check_ok():

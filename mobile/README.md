@@ -24,17 +24,19 @@ flutter pub get
 
 ## Run
 
-The default API base URL is `http://10.0.2.2:8000` — the Android emulator
-alias for the host machine where the backend runs.
+The default API base URL is `https://kisanai-os.onrender.com` — the production
+backend.
 
 ```bash
 flutter run
 ```
 
-On a **physical device**, point the app at your machine's LAN address:
+For local development against a backend running on your machine, point the app
+at it with `--dart-define`:
 
 ```bash
-flutter run --dart-define=API_BASE_URL=http://192.168.1.10:8000
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000   # Android emulator
+flutter run --dart-define=API_BASE_URL=http://192.168.1.10:8000  # physical device
 ```
 
 For a custom backend, override the same way for any command.
@@ -75,8 +77,9 @@ Release configuration lives in `android/app/build.gradle.kts`:
 
 ### Point the app at the production backend
 
-The default `API_BASE_URL` is `http://10.0.2.2:8000` (emulator loopback). Always
-override it for release builds:
+The default `API_BASE_URL` is already `https://kisanai-os.onrender.com`, so a
+plain release build talks to production. Override it only when building for a
+different backend:
 
 ```bash
 flutter build apk --release --dart-define=API_BASE_URL=https://api.your-backend.com
@@ -116,12 +119,12 @@ flutter pub get
 flutter analyze
 flutter test
 
-# Signed release APK
-flutter build apk --release --dart-define=API_BASE_URL=https://api.your-backend.com
+# Signed release APK (defaults to the production backend)
+flutter build apk --release
 # -> build/app/outputs/flutter-apk/app-release.apk
 
 # Android App Bundle (what you upload to Google Play)
-flutter build appbundle --release --dart-define=API_BASE_URL=https://api.your-backend.com
+flutter build appbundle --release
 # -> build/app/outputs/bundle/release/app-release.aab
 ```
 
@@ -134,10 +137,9 @@ flutter build appbundle --release --dart-define=API_BASE_URL=https://api.your-ba
 
 ### Notes for the Play Store listing
 
-- `android:usesCleartextTraffic="true"` is set for local HTTP backends; point
-  release builds at an HTTPS backend before public launch.
-- The backend (FastAPI) is not yet deployed to a public URL; the first release
-  should ship once a production `API_BASE_URL` is available.
+- `android:usesCleartextTraffic="true"` is kept for local HTTP backends during
+  development; release builds use the HTTPS production backend by default.
+- The backend is live at `https://kisanai-os.onrender.com`.
 
 ## Login
 

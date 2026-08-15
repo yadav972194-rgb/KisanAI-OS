@@ -67,7 +67,7 @@ def test_register_user_success(client):
     assert body["role"] == "farmer"
     assert body["is_active"] is True
     assert set(body.keys()) == {
-        "id", "username", "full_name", "mobile", "role", "is_active", "created_at",
+        "id", "username", "full_name", "mobile", "mobile_verified", "role", "is_active", "created_at",
     }
 
 

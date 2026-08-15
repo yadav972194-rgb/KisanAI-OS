@@ -73,7 +73,16 @@ void main() {
     await login(tester);
 
     expect(find.text('किसान होम'), findsOneWidget);
-    for (final label in ['मौसम', 'फसल', 'मिट्टी', 'रोग पहचान', 'AI सलाह', 'रोग ज्ञान', 'किसान']) {
+    for (final label in [
+      'मेरा खेत',
+      'मौसम',
+      'फसल',
+      'मिट्टी',
+      'रोग पहचान',
+      'AI सलाह',
+      'रोग ज्ञान',
+      'किसान',
+    ]) {
       expect(find.text(label), findsOneWidget);
     }
   });

@@ -34,6 +34,10 @@ class FarmerRepository:
         statement = select(Farmer).where(Farmer.mobile == mobile)
         return self.session.scalar(statement)
 
+    def get_farmer_by_user_id(self, user_id):
+        statement = select(Farmer).where(Farmer.user_id == user_id)
+        return self.session.scalar(statement)
+
     def get_all_farmers(self):
         statement = select(Farmer).order_by(Farmer.farmer_id)
         return self.session.scalars(statement).all()

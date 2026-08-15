@@ -105,5 +105,61 @@ void main() {
       expect(controller.user, isNull);
       expect(await storage.read(), isNull);
     });
+
+    test('logout revokes the server-side session', () async {
+      final backend = FakeBackend();
+      backend.logoutCalls = 0;
+      final (controller, storage) = build(backend);
+      await controller.login('ravi', 'secret');
+      await controller.logout();
+      expect(backend.logoutCalls, 1);
+      expect(await storage.read(), isNull);
+    });
+
+    test('logout clears the local session even when revocation fails',
+        () async {
+      final backend = FakeBackend()..failLogout = true;
+      final (controller, storage) = build(backend);
+      await controller.login('ravi', 'secret');
+      await controller.logout();
+      expect(controller.status, AuthStatus.unauthenticated);
+      expect(controller.user, isNull);
+      expect(await storage.read(), isNull);
+    });
+
+    test('register success creates account without auto-login', () async {
+      final (controller, storage) = build(FakeBackend());
+      final ok = await controller.register(
+        username: 'newfarmer',
+        password: 'secret123',
+        fullName: 'Naya Kisan',
+        mobile: '9876500000',
+      );
+      expect(ok, isTrue);
+      expect(controller.status, AuthStatus.unknown);
+      expect(controller.user, isNull);
+      expect(await storage.read(), isNull);
+    });
+
+    test('register duplicate username maps to friendly 409 message', () async {
+      final (controller, _) = build(FakeBackend());
+      final ok = await controller.register(
+        username: 'ravi',
+        password: 'secret123',
+      );
+      expect(ok, isFalse);
+      expect(controller.status, AuthStatus.unknown);
+      expect(controller.errorMessage, contains('पहले से मौजूद'));
+    });
+
+    test('register network failure surfaces connection error', () async {
+      final (controller, _) = build(FakeBackend()..failLogin = true);
+      final ok = await controller.register(
+        username: 'newfarmer',
+        password: 'secret123',
+      );
+      expect(ok, isFalse);
+      expect(controller.errorMessage, contains('नेटवर्क'));
+    });
   });
 }

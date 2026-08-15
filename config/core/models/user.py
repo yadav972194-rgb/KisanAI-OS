@@ -9,7 +9,7 @@ Authentication / account model (Phase 3).
 from datetime import datetime
 
 from sqlalchemy import Boolean, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from config.core.database import Base
 
@@ -30,7 +30,22 @@ class User(Base):
     mobile: Mapped[str] = mapped_column(String(15))
     role: Mapped[str] = mapped_column(String(20), default="farmer")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # True once the mobile number has been verified through OTP. Existing
+    # accounts keep False until the farmer verifies their number; this is
+    # a purely additive flag and never blocks legacy logins.
+    mobile_verified: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="0"
+    )
     created_at: Mapped[str] = mapped_column(String(19), default=_now)
+
+    farms: Mapped[list["Farmer"]] = relationship(
+        back_populates="user",
+    )
+
+    sessions: Mapped[list["UserSession"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
     def to_dict(self):
         """Public representation - password hash is never exposed."""
@@ -39,6 +54,7 @@ class User(Base):
             "username": self.username,
             "full_name": self.full_name,
             "mobile": self.mobile,
+            "mobile_verified": bool(self.mobile_verified),
             "role": self.role,
             "is_active": self.is_active,
             "created_at": self.created_at,

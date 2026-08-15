@@ -10,6 +10,13 @@ bcrypt==5.0.0
 python-multipart==0.0.32
 email-validator==2.3.0
 
+# Local crop-disease image classification (Disease Identification).
+# Free / open-source; used only when DISEASE_MODEL_PATH points at an
+# ONNX model file. Without a configured model the API stays in the
+# safe MODEL_NOT_CONFIGURED state.
+onnxruntime==1.28.0
+Pillow==12.3.0
+
 # Production database driver (PostgreSQL). Install only where the
 # deployed DATABASE_URL uses PostgreSQL; SQLite development is unaffected.
 psycopg[binary]==3.3.4

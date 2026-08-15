@@ -40,5 +40,52 @@ void main() {
       await future;
       expect(controller.isLoading, isFalse);
     });
+
+    test('fresh cache is served without a second network request', () async {
+      final backend = FakeBackend();
+      final (controller, _) = build(backend);
+      await controller.load();
+      final callsAfterFirstLoad = backend.weatherCalls;
+
+      await controller.load();
+      expect(controller.weather, isNotNull);
+      expect(backend.weatherCalls, callsAfterFirstLoad);
+    });
+
+    test('expired cache refetches from the network', () async {
+      final backend = FakeBackend();
+      final client = ApiClient(
+        baseUrl: 'http://test.local',
+        httpClient: backend.client(),
+      );
+      final controller = WeatherController(
+        WeatherApi(client),
+        cacheTtl: Duration.zero,
+      );
+      await controller.load();
+      final callsAfterFirstLoad = backend.weatherCalls;
+
+      await controller.load();
+      expect(backend.weatherCalls, greaterThan(callsAfterFirstLoad));
+    });
+
+    test('concurrent load calls are deduplicated', () async {
+      final backend = FakeBackend();
+      final (controller, _) = build(backend);
+
+      await Future.wait([controller.load(), controller.load()]);
+      expect(controller.weather, isNotNull);
+      expect(backend.weatherCalls, 1);
+    });
+
+    test('refresh forces a real fetch even when cached', () async {
+      final backend = FakeBackend();
+      final (controller, _) = build(backend);
+      await controller.load();
+      final callsAfterFirstLoad = backend.weatherCalls;
+
+      await controller.refresh();
+      expect(backend.weatherCalls, callsAfterFirstLoad + 1);
+    });
   });
 }

@@ -57,3 +57,33 @@ class CropOut(BaseModel):
     duration_days: int
     water_requirement: str
     created_at: str
+
+
+class MyFarmCropCreate(BaseModel):
+    """Crop added to the authenticated user's own farm.
+
+    ``farmer_id`` is resolved server-side from the linked farm, so a
+    farmer can never attach a crop to someone else's farm.
+    """
+
+    crop_name: str
+    season: str
+    duration_days: int = Field(gt=0)
+    water_requirement: str
+
+    @field_validator("crop_name", "season", "water_requirement", mode="before")
+    @classmethod
+    def _normalize_text(cls, value):
+        return _clean_required(value)
+
+
+class MyFarmCropUpdate(BaseModel):
+    crop_name: str
+    season: str
+    duration_days: int = Field(gt=0)
+    water_requirement: str
+
+    @field_validator("crop_name", "season", "water_requirement", mode="before")
+    @classmethod
+    def _normalize_text(cls, value):
+        return _clean_required(value)

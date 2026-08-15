@@ -8,6 +8,8 @@ Open-Meteo
 """
 
 import json
+import threading
+import time
 from datetime import datetime
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -23,20 +25,33 @@ class WeatherServiceError(Exception):
     """Weather service error."""
 
 
+# Serializes provider fetches across concurrent callers (single-flight).
+_fetch_lock = threading.Lock()
+
+
 class WeatherService:
     """Live Weather Service"""
 
     GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search"
     WEATHER_URL = "https://api.open-meteo.com/v1/forecast"
 
-    def __init__(self, repo=None):
-        self.location = settings.WEATHER_LOCATION
+    def __init__(self, repo=None, location: str | None = None):
+        # If a location string is provided (e.g. from the farmer's profile),
+        # use it for geocoding; otherwise fall back to the configured default.
+        self.location = location or settings.WEATHER_LOCATION
         self.country_code = settings.WEATHER_COUNTRY_CODE
         self.cache_ttl_seconds = settings.WEATHER_CACHE_TTL_SECONDS
         self.repo = repo or WeatherRepository()
+        self._coordinates = None
 
-    def _get_json(self, url, params):
-        """GET request and return JSON response."""
+    def _get_json(self, url, params, retries=2):
+        """GET request and return JSON response.
+
+        Open-Meteo responds with HTTP 429 when a caller exceeds its fair-use
+        rate limit. A short retry-with-backoff absorbs transient throttling;
+        persistent throttling still fails so the caller can fall back to the
+        stale weather cache.
+        """
 
         query_string = urlencode(params)
         request_url = f"{url}?{query_string}"
@@ -49,39 +64,71 @@ class WeatherService:
             },
         )
 
-        try:
-            with urlopen(request, timeout=10) as response:
-                return json.loads(
-                    response.read().decode("utf-8")
-                )
+        attempt = 0
 
-        except HTTPError as error:
-            raise WeatherServiceError(
-                f"Weather provider HTTP error: {error.code}"
-            ) from error
+        while True:
+            try:
+                with urlopen(request, timeout=10) as response:
+                    return json.loads(
+                        response.read().decode("utf-8")
+                    )
 
-        except URLError as error:
-            raise WeatherServiceError(
-                "Weather provider is unreachable"
-            ) from error
+            except HTTPError as error:
+                if error.code == 429 and attempt < retries:
+                    attempt += 1
+                    time.sleep(2 ** attempt)
+                    continue
 
-        except TimeoutError as error:
-            raise WeatherServiceError(
-                "Weather provider request timed out"
-            ) from error
+                if error.code == 429:
+                    raise WeatherServiceError(
+                        "Weather provider is rate limited; retrying later"
+                    ) from error
 
-        except json.JSONDecodeError as error:
-            raise WeatherServiceError(
-                "Invalid response from weather provider"
-            ) from error
+                raise WeatherServiceError(
+                    f"Weather provider HTTP error: {error.code}"
+                ) from error
 
-        except Exception as error:
-            raise WeatherServiceError(
-                "Unable to fetch weather data"
-            ) from error
+            except URLError as error:
+                raise WeatherServiceError(
+                    "Weather provider is unreachable"
+                ) from error
+
+            except TimeoutError as error:
+                raise WeatherServiceError(
+                    "Weather provider request timed out"
+                ) from error
+
+            except json.JSONDecodeError as error:
+                raise WeatherServiceError(
+                    "Invalid response from weather provider"
+                ) from error
+
+            except Exception as error:
+                raise WeatherServiceError(
+                    "Unable to fetch weather data"
+                ) from error
 
     def _get_coordinates(self):
-        """Get latitude and longitude for Sitapur."""
+        """Get latitude and longitude for the configured location.
+
+        Fixed coordinates from settings are used when available; otherwise
+        the geocoder is queried once and the result is cached in memory so
+        the (rate-limited) geocoding endpoint is not hit on every refresh.
+        """
+
+        latitude = settings.WEATHER_LATITUDE
+        longitude = settings.WEATHER_LONGITUDE
+
+        if latitude is not None and longitude is not None:
+            return latitude, longitude, self.location
+
+        if self._coordinates is None:
+            self._coordinates = self._geocode()
+
+        return self._coordinates
+
+    def _geocode(self):
+        """Resolve the configured location through the geocoding API."""
 
         data = self._get_json(
             self.GEOCODING_URL,
@@ -234,27 +281,33 @@ class WeatherService:
           2. No cache / expired -> fetch live from Open-Meteo and store.
           3. Live fetch fails but a cache exists -> serve stale cache.
           4. Live fetch fails with no cache -> WeatherServiceError.
+
+        Concurrent callers are serialized with a process-wide lock
+        (single-flight): when several requests arrive at the same moment
+        and the cache is cold, only one actually queries the provider;
+        the rest then hit the just-written cache.
         """
-        cached = self.repo.get_latest_by_location(self.location)
+        with _fetch_lock:
+            cached = self.repo.get_latest_by_location(self.location)
 
-        if cached is not None and self._is_fresh(cached.updated_at):
-            logger.info("Weather cache hit for %s", self.location)
-            return cached.to_dict()
-
-        try:
-            weather = self._fetch_live()
-        except WeatherServiceError as error:
-            if cached is not None:
-                logger.warning(
-                    "Weather fetch failed (%s); serving cached data",
-                    error,
-                )
+            if cached is not None and self._is_fresh(cached.updated_at):
+                logger.info("Weather cache hit for %s", self.location)
                 return cached.to_dict()
-            raise
 
-        self.repo.save(weather)
+            try:
+                weather = self._fetch_live()
+            except WeatherServiceError as error:
+                if cached is not None:
+                    logger.warning(
+                        "Weather fetch failed (%s); serving cached data",
+                        error,
+                    )
+                    return cached.to_dict()
+                raise
 
-        return weather.to_dict()
+            self.repo.save(weather)
+
+            return weather.to_dict()
 
 
 if __name__ == "__main__":

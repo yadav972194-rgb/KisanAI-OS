@@ -99,6 +99,34 @@ void main() {
       expect(jsonDecode(body!), {'crop_name': 'गेहूँ'});
     });
 
+    test('putJson sends a JSON body', () async {
+      String? contentType;
+      String? body;
+      final mock = MockClient((request) async {
+        contentType = request.headers['Content-Type'];
+        body = request.body;
+        return jsonResponse(const {'ok': true});
+      });
+      final client = clientFor(mock);
+      await client.putJson('/api/my-farm', {'village': 'गाँव'}, (json) => json);
+      expect(contentType, 'application/json');
+      expect(jsonDecode(body!), {'village': 'गाँव'});
+    });
+
+    test('deleteJson issues a DELETE request', () async {
+      String? method;
+      String? path;
+      final mock = MockClient((request) async {
+        method = request.method;
+        path = request.url.path;
+        return jsonResponse(const {'ok': true});
+      });
+      final client = clientFor(mock);
+      await client.deleteJson('/api/my-farm/crops/3', (json) => json);
+      expect(method, 'DELETE');
+      expect(path, '/api/my-farm/crops/3');
+    });
+
     test('postMultipart includes file part and optional fields', () async {
       String? contentType;
       String? body;

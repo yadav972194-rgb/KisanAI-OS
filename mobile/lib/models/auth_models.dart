@@ -17,6 +17,34 @@ class AuthToken {
   }
 }
 
+/// Parsed `POST /api/auth/otp/request` response (`OtpRequestOut`).
+///
+/// `devOtp` is only populated when the backend runs in development mock
+/// mode (OTP_MOCK=true). It is never present in production.
+class OtpRequestResult {
+  const OtpRequestResult({
+    required this.success,
+    required this.message,
+    this.ttlSeconds,
+    this.devOtp,
+  });
+
+  final bool success;
+  final String message;
+  final int? ttlSeconds;
+  final String? devOtp;
+
+  factory OtpRequestResult.fromJson(Object? json) {
+    final map = json as Map<String, dynamic>;
+    return OtpRequestResult(
+      success: map['success'] as bool? ?? false,
+      message: map['message'] as String? ?? '',
+      ttlSeconds: (map['ttl_seconds'] as num?)?.toInt(),
+      devOtp: map['dev_otp'] as String?,
+    );
+  }
+}
+
 /// Parsed user record (`UserOut`).
 class AuthUser {
   const AuthUser({

@@ -117,6 +117,40 @@ class ErrorBanner extends StatelessWidget {
   }
 }
 
+/// Inline informational banner (e.g. development OTP hint).
+class InfoBanner extends StatelessWidget {
+  const InfoBanner({super.key, required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, color: theme.colorScheme.onSecondaryContainer),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSecondaryContainer,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Title shown above sections in detail screens.
 class SectionHeader extends StatelessWidget {
   const SectionHeader({super.key, required this.title, this.subtitle});

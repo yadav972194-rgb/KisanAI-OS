@@ -112,7 +112,7 @@ def test_admin_lists_users(client, admin_headers):
     for user in users:
         assert "hashed_password" not in user
         assert set(user.keys()) == {
-            "id", "username", "full_name", "mobile", "role",
+            "id", "username", "full_name", "mobile", "mobile_verified", "role",
             "is_active", "created_at",
         }
 
