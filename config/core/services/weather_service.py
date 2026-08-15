@@ -127,28 +127,67 @@ class WeatherService:
 
         return self._coordinates
 
+    def _geocode_candidates(self):
+        """Return location strings to try, most specific first.
+
+        The composite farm location (e.g. "Rampur Sitapur Uttar Pradesh")
+        often cannot be resolved by the geocoder as a whole, so we fall
+        back through the individual parts in order (village, block,
+        district, state), each of which the geocoder can usually resolve.
+        """
+
+        parts = [p for p in self.location.split() if p]
+
+        if len(parts) <= 1:
+            return [self.location]
+
+        ordered = [self.location]
+        seen = {self.location.lower()}
+
+        for part in parts:
+            key = part.lower()
+            if key not in seen:
+                seen.add(key)
+                ordered.append(part)
+
+        return ordered
+
     def _geocode(self):
-        """Resolve the configured location through the geocoding API."""
+        """Resolve the configured location through the geocoding API.
 
-        data = self._get_json(
-            self.GEOCODING_URL,
-            {
-                "name": self.location,
-                "count": 1,
-                "language": "en",
-                "format": "json",
-                "countryCode": self.country_code,
-            },
-        )
+        The full location string is tried first; when the geocoder returns
+        no results, progressively simpler fallbacks (prefixes, then the
+        individual parts) are attempted so a village/district still
+        resolves even when the composite string does not.
+        """
 
-        results = data.get("results", [])
+        last_error: str | None = None
 
-        if not results:
-            raise WeatherServiceError(
-                f"Location not found: {self.location}"
+        for candidate in self._geocode_candidates():
+            data = self._get_json(
+                self.GEOCODING_URL,
+                {
+                    "name": candidate,
+                    "count": 1,
+                    "language": "en",
+                    "format": "json",
+                    "countryCode": self.country_code,
+                },
             )
 
-        location = results[0]
+            results = data.get("results", [])
+
+            if results:
+                self.location = candidate
+                location = results[0]
+                break
+
+            last_error = f"Location not found: {candidate}"
+
+        else:
+            raise WeatherServiceError(
+                last_error or f"Location not found: {self.location}"
+            )
 
         try:
             return (

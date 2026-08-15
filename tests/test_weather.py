@@ -347,6 +347,55 @@ def test_geocoding_result_is_cached(client, monkeypatch):
 
 
 # ==========================================================
+# K. Service: geocoder falls back to simpler location parts
+# ==========================================================
+
+def test_geocode_falls_back_to_simpler_parts(client, monkeypatch):
+    """A composite farm location that the geocoder cannot resolve should
+    fall back to progressively simpler strings and still resolve."""
+    monkeypatch.setattr(settings, "WEATHER_LATITUDE", None)
+    monkeypatch.setattr(settings, "WEATHER_LONGITUDE", None)
+
+    service = WeatherService(repo=WeatherRepository(), location="Rampur Sitapur Uttar Pradesh")
+    try:
+        attempts = []
+
+        def _fake_get_json(self, url, params, retries=2):
+            attempts.append(params["name"])
+            if params["name"] == "Sitapur":
+                return {"results": [{"latitude": 27.5, "longitude": 80.6, "name": "Sitapur"}]}
+            return {"results": []}
+
+        monkeypatch.setattr(WeatherService, "_get_json", _fake_get_json)
+
+        lat, lon, name = service._geocode()
+        assert lat == 27.5
+        assert lon == 80.6
+        assert "Sitapur" in attempts
+        assert attempts[0] == "Rampur Sitapur Uttar Pradesh"
+        assert attempts[-1] == "Sitapur"
+    finally:
+        service.repo.close()
+        monkeypatch.undo()
+
+
+def test_geocode_candidates_ordering():
+    """Candidates are most specific first, deduplicated, without blanks."""
+    service = WeatherService(repo=WeatherRepository(), location="Rampur Sitapur Uttar Pradesh")
+    try:
+        candidates = service._geocode_candidates()
+        assert candidates == [
+            "Rampur Sitapur Uttar Pradesh",
+            "Rampur",
+            "Sitapur",
+            "Uttar",
+            "Pradesh",
+        ]
+    finally:
+        service.repo.close()
+
+
+# ==========================================================
 # L. Concurrent requests are deduplicated (single-flight)
 # ==========================================================
 
