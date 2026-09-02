@@ -72,8 +72,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Icon(Icons.agriculture,
-                        size: 64, color: AppTheme.primaryGreen),
+                    // KisanAI Logo
+                    Image.asset(
+                      'assets/images/kisanai_logo.png',
+                      width: 80,
+                      height: 80,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.agriculture,
+                        size: 64,
+                        color: AppTheme.primaryGreen,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     Text(
                       AppStrings.appName,
@@ -89,7 +98,19 @@ class _LoginScreenState extends State<LoginScreen> {
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 16),
+                    // Tractor/Farmer hero illustration
+                    Image.asset(
+                      'assets/images/tractor_farmer_hero.png',
+                      width: 180,
+                      height: 100,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.agriculture,
+                        size: 48,
+                        color: AppTheme.primaryGreen,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
                     Text(
                       AppStrings.loginSubtitle,
                       style: Theme.of(context).textTheme.titleMedium,

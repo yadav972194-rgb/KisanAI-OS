@@ -4,6 +4,7 @@ import 'core/image/gallery_image_picker.dart';
 import 'core/image/picked_image.dart';
 import 'core/network/api_client.dart';
 import 'core/storage/token_storage.dart';
+import 'core/voice/voice_service.dart';
 import 'features/auth/auth_controller.dart';
 import 'features/auth/forgot_password_controller.dart';
 import 'features/assistant/assistant_controller.dart';
@@ -102,7 +103,8 @@ class AppDependencies {
       WaterStressController(waterStressApi, imagePicker);
   late final RecommendationsController recommendationsController =
       RecommendationsController(recommendationsApi);
+  late final VoiceService voiceService = VoiceService()..initialize();
   late final AssistantController assistantController =
-      AssistantController(assistantApi);
+      AssistantController(assistantApi, voiceService: voiceService);
   late final MyFarmController myFarmController = MyFarmController(myFarmApi);
 }

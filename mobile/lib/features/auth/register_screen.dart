@@ -70,13 +70,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Icon(Icons.person_add_alt_1,
-                        size: 56, color: AppTheme.primaryGreen),
+                    // KisanAI Logo
+                    Image.asset(
+                      'assets/images/kisanai_logo.png',
+                      width: 70,
+                      height: 70,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.person_add_alt_1,
+                        size: 56,
+                        color: AppTheme.primaryGreen,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     Text(
                       AppStrings.signUpSubtitle,
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 16),
+                    // Tractor/Farmer hero illustration
+                    Image.asset(
+                      'assets/images/tractor_farmer_hero.png',
+                      width: 160,
+                      height: 90,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.agriculture,
+                        size: 48,
+                        color: AppTheme.primaryGreen,
+                      ),
                     ),
                     const SizedBox(height: 24),
                     if (auth.errorMessage != null) ...[

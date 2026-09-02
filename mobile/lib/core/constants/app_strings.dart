@@ -222,6 +222,16 @@ class AppStrings {
   static const String assistantSuggestion = 'मेरी फसल के क्या हाल हैं?';
   static const String assistantIntro =
       'अपने खेत या फसल के बारे में सवाल पूछें। उत्तर केवल आपकी सत्यापित जानकारी से दिए जाएँगे।';
+
+  // Voice
+  static const String startVoiceInput = 'आवाज़ से पूछें';
+  static const String stopListening = 'सुनना बंद करें';
+  static const String playVoice = 'बोलें';
+  static const String stopVoice = 'बोलना बंद करें';
+  static const String voiceUnavailable =
+      'वॉइस उपलब्ध नहीं (ऑफलाइन या अनुमति नहीं)';
+  static const String micPermissionNeeded =
+      'माइक्रोफोन अनुमति चाहिए। सेटिंग्स से दें।';
   static const String farmSectionLabel = 'खेत';
   static const String cropsSectionLabel = 'फसलें';
   static const String weatherSectionLabel = 'मौसम';

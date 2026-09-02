@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kisanai/core/network/api_client.dart';
+import 'package:kisanai/core/voice/voice_service.dart';
 import 'package:kisanai/features/assistant/assistant_controller.dart';
 import 'package:kisanai/features/assistant/assistant_screen.dart';
 import 'package:kisanai/services/assistant_api.dart';
 import 'package:provider/provider.dart';
 
 import 'helpers/fake_backend.dart';
+import 'helpers/mock_voice_service.dart';
 
 void main() {
   AssistantController build(FakeBackend backend) {
@@ -18,8 +20,11 @@ void main() {
   }
 
   Widget wrap(AssistantController controller) {
-    return ChangeNotifierProvider<AssistantController>.value(
-      value: controller,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AssistantController>.value(value: controller),
+        ChangeNotifierProvider<VoiceService>.value(value: MockVoiceService()),
+      ],
       child: const MaterialApp(home: AssistantScreen()),
     );
   }

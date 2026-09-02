@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/constants/app_strings.dart';
+import '../../core/permissions/mic_permission.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/voice/voice_service.dart';
 import '../assistant/assistant_controller.dart';
 import '../detection/growth_stage_screen.dart';
 import '../detection/nutrient_deficiency_screen.dart';
@@ -10,6 +12,8 @@ import '../detection/pest_screen.dart';
 import '../detection/water_stress_screen.dart';
 import '../detection/weed_screen.dart';
 import '../diagnosis/diagnosis_screen.dart';
+import 'tts_controls.dart';
+import 'voice_input_button.dart';
 
 /// Ask the assistant natural-language questions about the farm / crop.
 ///
@@ -26,6 +30,7 @@ class AssistantScreen extends StatefulWidget {
 
 class _AssistantScreenState extends State<AssistantScreen> {
   final _textController = TextEditingController();
+  bool _voicePermissionRequested = false;
 
   @override
   void dispose() {
@@ -45,9 +50,26 @@ class _AssistantScreenState extends State<AssistantScreen> {
     controller.ask(suggestion);
   }
 
+  Future<void> _handleVoiceResult(String text) async {
+    if (!mounted) return;
+    _textController.text = text;
+    final controller = context.read<AssistantController>();
+    controller.ask(text);
+  }
+
+  Future<void> _requestVoicePermissionIfNeeded() async {
+    if (_voicePermissionRequested) return;
+    _voicePermissionRequested = true;
+    final granted = await requestMicPermission(context);
+    if (!granted && mounted) {
+      showMicPermissionDeniedMessage(context);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<AssistantController>();
+    final voiceService = context.watch<VoiceService>();
 
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.assistantTitle)),
@@ -76,7 +98,10 @@ class _AssistantScreenState extends State<AssistantScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _AnswerArea(controller: controller),
+                  _AnswerArea(
+                    controller: controller,
+                    voiceService: voiceService,
+                  ),
                 ],
               ),
             ),
@@ -84,7 +109,10 @@ class _AssistantScreenState extends State<AssistantScreen> {
           _InputBar(
             controller: _textController,
             onSend: () => _ask(controller),
+            onVoiceResult: _handleVoiceResult,
+            onRequestVoicePermission: _requestVoicePermissionIfNeeded,
             enabled: controller.state != AssistantState.loading,
+            voiceService: voiceService,
           ),
         ],
       ),
@@ -93,9 +121,13 @@ class _AssistantScreenState extends State<AssistantScreen> {
 }
 
 class _AnswerArea extends StatelessWidget {
-  const _AnswerArea({required this.controller});
+  const _AnswerArea({
+    required this.controller,
+    required this.voiceService,
+  });
 
   final AssistantController controller;
+  final VoiceService voiceService;
 
   @override
   Widget build(BuildContext context) {
@@ -149,6 +181,11 @@ class _AnswerArea extends StatelessWidget {
                   style: const TextStyle(fontSize: 16, height: 1.4),
                 ),
               ),
+            ),
+            TtsControls(
+              voiceService: voiceService,
+              onPlay: () => controller.speakResponse(),
+              onStop: () => controller.stopSpeaking(),
             ),
             _DetectionDeepLink(intent: response.intent),
             if (response.data != null && response.isOk)
@@ -299,15 +336,24 @@ class _InputBar extends StatelessWidget {
   const _InputBar({
     required this.controller,
     required this.onSend,
+    required this.onVoiceResult,
+    required this.onRequestVoicePermission,
     required this.enabled,
+    required this.voiceService,
   });
 
   final TextEditingController controller;
   final VoidCallback onSend;
+  final void Function(String text) onVoiceResult;
+  final VoidCallback onRequestVoicePermission;
   final bool enabled;
+  final VoiceService voiceService;
 
   @override
   Widget build(BuildContext context) {
+    final voiceAvailable = voiceService.speechAvailable && !voiceService.isListening;
+    final voiceUnavailableReason = voiceService.lastError;
+
     return SafeArea(
       top: false,
       child: Padding(
@@ -332,6 +378,25 @@ class _InputBar extends StatelessWidget {
                 ),
               ),
             ),
+            const SizedBox(width: 8),
+            VoiceInputButton(
+              voiceService: voiceService,
+              onResult: onVoiceResult,
+              enabled: enabled && voiceAvailable,
+            ),
+            if (!voiceAvailable && enabled) ...[
+              const SizedBox(width: 8),
+              Tooltip(
+                message: voiceUnavailableReason ?? AppStrings.voiceUnavailable,
+                child: IconButton.outlined(
+                  onPressed: onRequestVoicePermission,
+                  icon: const Icon(Icons.mic_off),
+                  style: IconButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.outline,
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(width: 8),
             IconButton.filled(
               tooltip: AppStrings.askButton,

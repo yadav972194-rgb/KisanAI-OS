@@ -4,6 +4,7 @@ import 'package:http/testing.dart';
 import 'package:kisanai/core/constants/app_strings.dart';
 import 'package:kisanai/core/image/picked_image.dart';
 import 'package:kisanai/core/network/api_client.dart';
+import 'package:kisanai/core/voice/voice_service.dart';
 import 'package:kisanai/features/assistant/assistant_controller.dart';
 import 'package:kisanai/features/assistant/assistant_screen.dart';
 import 'package:kisanai/features/detection/growth_stage_controller.dart';
@@ -23,6 +24,7 @@ import 'package:kisanai/services/weed_detection_api.dart';
 import 'package:provider/provider.dart';
 
 import 'helpers/fake_backend.dart';
+import 'helpers/mock_voice_service.dart';
 
 void main() {
   Widget wrap(AssistantController assistant, {String intent = 'WATER_STRESS'}) {
@@ -33,9 +35,8 @@ void main() {
     Future<PickedImage?> picker() async => null;
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider<AssistantController>.value(
-          value: assistant,
-        ),
+        ChangeNotifierProvider<AssistantController>.value(value: assistant),
+        ChangeNotifierProvider<VoiceService>.value(value: MockVoiceService()),
         ChangeNotifierProvider<DiagnosisController>.value(
           value: DiagnosisController(DiseaseDetectionApi(client), picker),
         ),
@@ -56,7 +57,6 @@ void main() {
           value: WaterStressController(WaterStressApi(client), picker),
         ),
       ],
-      // The assistant screen renders the deep-link chip from the answer.
       child: const MaterialApp(home: AssistantScreen()),
     );
   }
