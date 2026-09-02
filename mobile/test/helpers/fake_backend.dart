@@ -38,6 +38,7 @@ class FakeBackend {
   FakeBackend({
     this.validPassword = 'secret',
     this.detectStatus = 'MODEL_NOT_CONFIGURED',
+    this.detectionStatuses = const {},
     this.recommendationStatus = 'RECOMMENDATION_AVAILABLE',
     this.failWeather = false,
     this.failLogin = false,
@@ -48,6 +49,11 @@ class FakeBackend {
 
   final String validPassword;
   String detectStatus;
+
+  /// Per-path detection statuses for the crop-health detectors
+  /// (`/api/pest/detect`, `/api/weed/detect`, ...). Falls back to
+  /// [detectStatus] when a path is not present.
+  Map<String, String> detectionStatuses;
   String recommendationStatus;
   bool failWeather;
   bool failLogin;
@@ -193,6 +199,31 @@ class FakeBackend {
               'model': null,
               'message': 'no model bundled',
             });
+          case '/api/pest/detect':
+            return _detectionResponse(
+              _statusFor('/api/pest/detect'),
+              nameKey: 'pest_name',
+            );
+          case '/api/weed/detect':
+            return _detectionResponse(
+              _statusFor('/api/weed/detect'),
+              nameKey: 'weed_name',
+            );
+          case '/api/nutrient-deficiency/detect':
+            return _detectionResponse(
+              _statusFor('/api/nutrient-deficiency/detect'),
+              nameKey: 'deficiency_name',
+            );
+          case '/api/growth-stage/detect':
+            return _detectionResponse(
+              _statusFor('/api/growth-stage/detect'),
+              nameKey: 'growth_stage',
+            );
+          case '/api/water-stress/detect':
+            return _detectionResponse(
+              _statusFor('/api/water-stress/detect'),
+              nameKey: 'stress_level',
+            );
           case '/api/recommendations':
             if (recommendationStatus == 'INSUFFICIENT_DATA') {
               return jsonResponse({
@@ -391,5 +422,20 @@ class FakeBackend {
       default:
         return jsonResponse({'message': 'not found'}, status: 404);
     }
+  }
+
+  String _statusFor(String path) => detectionStatuses[path] ?? detectStatus;
+
+  http.Response _detectionResponse(String status, {required String nameKey}) {
+    final configured = status != 'MODEL_NOT_CONFIGURED';
+    return jsonResponse({
+      'success': true,
+      'status': status,
+      'crop': null,
+      nameKey: configured ? 'sample-name' : null,
+      'confidence': configured ? 0.87 : null,
+      'model': null,
+      'message': 'no model bundled',
+    });
   }
 }

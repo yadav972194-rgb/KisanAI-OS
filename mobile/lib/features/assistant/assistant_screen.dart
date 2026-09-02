@@ -4,6 +4,12 @@ import 'package:provider/provider.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../assistant/assistant_controller.dart';
+import '../detection/growth_stage_screen.dart';
+import '../detection/nutrient_deficiency_screen.dart';
+import '../detection/pest_screen.dart';
+import '../detection/water_stress_screen.dart';
+import '../detection/weed_screen.dart';
+import '../diagnosis/diagnosis_screen.dart';
 
 /// Ask the assistant natural-language questions about the farm / crop.
 ///
@@ -144,6 +150,7 @@ class _AnswerArea extends StatelessWidget {
                 ),
               ),
             ),
+            _DetectionDeepLink(intent: response.intent),
             if (response.data != null && response.isOk)
               Padding(
                 padding: const EdgeInsets.only(top: 12),
@@ -152,6 +159,42 @@ class _AnswerArea extends StatelessWidget {
           ],
         );
     }
+  }
+}
+
+class _DetectionDeepLink extends StatelessWidget {
+  const _DetectionDeepLink({required this.intent});
+
+  final String intent;
+
+  static const Map<String, Widget Function()> _targets = {
+    'DISEASE_DETECTION': DiagnosisScreen.new,
+    'PEST_DETECTION': PestScreen.new,
+    'WEED_DETECTION': WeedScreen.new,
+    'NUTRIENT_DEFICIENCY': NutrientDeficiencyScreen.new,
+    'GROWTH_STAGE': GrowthStageScreen.new,
+    'WATER_STRESS': WaterStressScreen.new,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final buildScreen = _targets[intent];
+    if (buildScreen == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: ActionChip(
+          avatar: const Icon(Icons.open_in_new, size: 18),
+          label: const Text(AppStrings.openDetectionScreen),
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => buildScreen()),
+            );
+          },
+        ),
+      ),
+    );
   }
 }
 

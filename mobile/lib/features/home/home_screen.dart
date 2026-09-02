@@ -8,6 +8,7 @@ import '../assistant/assistant_screen.dart';
 import '../crops/crops_screen.dart';
 import '../diagnosis/diagnosis_screen.dart';
 import '../diseases/diseases_screen.dart';
+import '../detection_hub/detection_hub_screen.dart';
 import '../farmers/farmers_screen.dart';
 import '../my_farm/my_farm_screen.dart';
 import '../profile/profile_screen.dart';
@@ -53,6 +54,11 @@ class HomeScreen extends StatelessWidget {
         icon: Icons.image_search_outlined,
         label: AppStrings.diagnosisCard,
         screen: const DiagnosisScreen(),
+      ),
+      _DashboardCard(
+        icon: Icons.health_and_safety_outlined,
+        label: AppStrings.detectionHubCard,
+        screen: const DetectionHubScreen(),
       ),
       _DashboardCard(
         icon: Icons.auto_awesome_outlined,

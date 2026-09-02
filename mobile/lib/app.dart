@@ -9,6 +9,11 @@ import 'features/auth/forgot_password_controller.dart';
 import 'features/auth/login_screen.dart';
 import 'features/assistant/assistant_controller.dart';
 import 'features/diagnosis/diagnosis_controller.dart';
+import 'features/detection/growth_stage_controller.dart';
+import 'features/detection/nutrient_deficiency_controller.dart';
+import 'features/detection/pest_controller.dart';
+import 'features/detection/water_stress_controller.dart';
+import 'features/detection/weed_controller.dart';
 import 'features/home/home_screen.dart';
 import 'features/recommendations/recommendations_controller.dart';
 import 'features/splash/splash_screen.dart';
@@ -36,6 +41,21 @@ class KisanApp extends StatelessWidget {
         ),
         ChangeNotifierProvider<DiagnosisController>.value(
           value: dependencies.diagnosisController,
+        ),
+        ChangeNotifierProvider<PestController>.value(
+          value: dependencies.pestController,
+        ),
+        ChangeNotifierProvider<WeedController>.value(
+          value: dependencies.weedController,
+        ),
+        ChangeNotifierProvider<NutrientDeficiencyController>.value(
+          value: dependencies.nutrientDeficiencyController,
+        ),
+        ChangeNotifierProvider<GrowthStageController>.value(
+          value: dependencies.growthStageController,
+        ),
+        ChangeNotifierProvider<WaterStressController>.value(
+          value: dependencies.waterStressController,
         ),
         ChangeNotifierProvider<RecommendationsController>.value(
           value: dependencies.recommendationsController,

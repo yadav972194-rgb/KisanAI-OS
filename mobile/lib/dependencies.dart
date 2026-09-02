@@ -8,6 +8,11 @@ import 'features/auth/auth_controller.dart';
 import 'features/auth/forgot_password_controller.dart';
 import 'features/assistant/assistant_controller.dart';
 import 'features/diagnosis/diagnosis_controller.dart';
+import 'features/detection/growth_stage_controller.dart';
+import 'features/detection/nutrient_deficiency_controller.dart';
+import 'features/detection/pest_controller.dart';
+import 'features/detection/water_stress_controller.dart';
+import 'features/detection/weed_controller.dart';
 import 'features/my_farm/my_farm_controller.dart';
 import 'features/recommendations/recommendations_controller.dart';
 import 'features/weather/weather_controller.dart';
@@ -21,10 +26,15 @@ import 'services/crops_api.dart';
 import 'services/disease_detection_api.dart';
 import 'services/diseases_api.dart';
 import 'services/farmers_api.dart';
+import 'services/growth_stage_api.dart';
 import 'services/my_farm_api.dart';
+import 'services/nutrient_deficiency_api.dart';
+import 'services/pest_detection_api.dart';
 import 'services/recommendations_api.dart';
 import 'services/soils_api.dart';
+import 'services/water_stress_api.dart';
 import 'services/weather_api.dart';
+import 'services/weed_detection_api.dart';
 
 /// Composition root for the app.
 ///
@@ -53,6 +63,12 @@ class AppDependencies {
   late final DiseasesApi diseasesApi = DiseasesApi(apiClient);
   late final DiseaseDetectionApi diseaseDetectionApi =
       DiseaseDetectionApi(apiClient);
+  late final PestDetectionApi pestDetectionApi = PestDetectionApi(apiClient);
+  late final WeedDetectionApi weedDetectionApi = WeedDetectionApi(apiClient);
+  late final NutrientDeficiencyApi nutrientDeficiencyApi =
+      NutrientDeficiencyApi(apiClient);
+  late final GrowthStageApi growthStageApi = GrowthStageApi(apiClient);
+  late final WaterStressApi waterStressApi = WaterStressApi(apiClient);
   late final MyFarmApi myFarmApi = MyFarmApi(apiClient);
   late final RecommendationsApi recommendationsApi =
       RecommendationsApi(apiClient);
@@ -74,6 +90,16 @@ class AppDependencies {
       ListController<Disease>(diseasesApi.fetchDiseases);
   late final DiagnosisController diagnosisController =
       DiagnosisController(diseaseDetectionApi, imagePicker);
+  late final PestController pestController =
+      PestController(pestDetectionApi, imagePicker);
+  late final WeedController weedController =
+      WeedController(weedDetectionApi, imagePicker);
+  late final NutrientDeficiencyController nutrientDeficiencyController =
+      NutrientDeficiencyController(nutrientDeficiencyApi, imagePicker);
+  late final GrowthStageController growthStageController =
+      GrowthStageController(growthStageApi, imagePicker);
+  late final WaterStressController waterStressController =
+      WaterStressController(waterStressApi, imagePicker);
   late final RecommendationsController recommendationsController =
       RecommendationsController(recommendationsApi);
   late final AssistantController assistantController =

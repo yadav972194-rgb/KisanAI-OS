@@ -15,6 +15,7 @@ class AppStrings {
   static const String soilCard = 'मिट्टी';
   static const String diseasesCard = 'रोग ज्ञान';
   static const String diagnosisCard = 'रोग पहचान';
+  static const String detectionHubCard = 'फसल निदान';
   static const String recommendationsCard = 'AI सलाह';
   static const String farmersCard = 'किसान';
   static const String myFarmCard = 'मेरा खेत';
@@ -150,6 +151,27 @@ class AppStrings {
   static const String healthyCropHint = 'इस फोटो में कोई रोग नहीं पाया गया।';
   static const String noImageSelected = 'कृपया पहले एक फोटो चुनें';
   static const String resultHeading = 'परिणाम';
+
+  // Detection Hub
+  static const String detectionHubTitle = 'फसल निदान';
+
+  // Pest Detection
+  static const String pestTitle = 'कीट पहचान';
+
+  // Weed Detection
+  static const String weedTitle = 'खरपतवार पहचान';
+
+  // Nutrient Deficiency Detection
+  static const String nutrientTitle = 'पोषक तत्व पहचान';
+
+  // Growth Stage Detection
+  static const String growthStageTitle = 'वृद्धि अवस्था पहचान';
+
+  // Water Stress Detection
+  static const String waterStressTitle = 'जल तनाव पहचान';
+
+  // Assistant deep-link
+  static const String openDetectionScreen = 'स्क्रीन खोलें';
 
   // Recommendations
   static const String recommendationsTitle = 'AI सलाह';
