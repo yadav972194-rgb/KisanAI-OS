@@ -228,8 +228,9 @@ void main() {
     useTallSurface(tester);
     final deps = buildDeps(FakeBackend());
     await tester.pumpWidget(KisanApp(dependencies: deps));
+    // Pass the enforced ~2s branded splash before the login form is shown.
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 150));
+    await tester.pump(const Duration(milliseconds: 2100));
 
     await tester.enterText(find.byType(TextFormField).first, 'ravi');
     await tester.enterText(find.byType(TextFormField).at(1), 'secret');
