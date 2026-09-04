@@ -25,6 +25,18 @@ from config.core.controllers.disease_controller import DiseaseController
 from config.core.controllers.disease_detection_controller import (
     DiseaseDetectionController,
 )
+from config.core.controllers.pest_detection_controller import (
+    PestDetectionController,
+)
+from config.core.controllers.weed_detection_controller import (
+    WeedDetectionController,
+)
+from config.core.controllers.nutrient_deficiency_controller import (
+    NutrientDeficiencyController,
+)
+from config.core.controllers.growth_stage_controller import (
+    GrowthStageController,
+)
 from config.core.controllers.my_farm_controller import MyFarmController
 from config.core.controllers.prediction_controller import PredictionController
 from config.core.controllers.recommendation_controller import (
@@ -33,6 +45,7 @@ from config.core.controllers.recommendation_controller import (
 from config.core.controllers.soil_controller import SoilController
 from config.core.controllers.upload_controller import UploadController
 from config.core.controllers.weather_controller import WeatherController
+from config.core.controllers.water_stress_controller import WaterStressController
 from config.core.api.auth_routes import (
     router as auth_router,
     user_service as auth_user_service,
@@ -62,11 +75,14 @@ from config.core.schemas import (
     FarmerCreate,
     FarmerOut,
     FarmerUpdate,
+    GrowthStageOut,
     MessageOut,
     MyFarmCreate,
     MyFarmCropCreate,
     MyFarmCropUpdate,
     MyFarmUpdate,
+    NutrientDeficiencyOut,
+    PestDetectionOut,
     PredictionOut,
     PredictionRequest,
     RecommendationOut,
@@ -77,12 +93,25 @@ from config.core.schemas import (
     UploadOut,
     UserOut,
     UserRoleUpdate,
+    WaterStressOut,
     WeatherOut,
+    WeedDetectionOut,
 )
 from config.core.services.user_service import UserService
 from config.core.services.disease_detection_service import (
     DiseaseDetectionError,
 )
+from config.core.services.pest_detection_service import (
+    PestDetectionError,
+)
+from config.core.services.weed_detection_service import (
+    WeedDetectionError,
+)
+from config.core.services.nutrient_deficiency_service import (
+    NutrientDeficiencyError,
+)
+from config.core.services.growth_stage_service import GrowthStageError
+from config.core.services.water_stress_service import WaterStressError
 from config.core.services.prediction_service import PredictionError
 from config.core.services.recommendation_service import RecommendationError
 from config.core.services.upload_service import UploadError
@@ -283,6 +312,91 @@ async def disease_detection_error_handler(
 ):
     logger.warning(
         "DiseaseDetectionError on %s: %s", request.url.path, exc
+    )
+    return JSONResponse(
+        status_code=502,
+        content={
+            "success": False,
+            "message": str(exc),
+            "code": "MODEL_INVALID",
+        },
+    )
+
+
+@app.exception_handler(PestDetectionError)
+async def pest_detection_error_handler(
+    request: Request, exc: PestDetectionError
+):
+    logger.warning(
+        "PestDetectionError on %s: %s", request.url.path, exc
+    )
+    return JSONResponse(
+        status_code=502,
+        content={
+            "success": False,
+            "message": str(exc),
+            "code": "MODEL_INVALID",
+        },
+    )
+
+
+@app.exception_handler(WeedDetectionError)
+async def weed_detection_error_handler(
+    request: Request, exc: WeedDetectionError
+):
+    logger.warning(
+        "WeedDetectionError on %s: %s", request.url.path, exc
+    )
+    return JSONResponse(
+        status_code=502,
+        content={
+            "success": False,
+            "message": str(exc),
+            "code": "MODEL_INVALID",
+        },
+    )
+
+
+@app.exception_handler(NutrientDeficiencyError)
+async def nutrient_deficiency_error_handler(
+    request: Request, exc: NutrientDeficiencyError
+):
+    logger.warning(
+        "NutrientDeficiencyError on %s: %s", request.url.path, exc
+    )
+    return JSONResponse(
+        status_code=502,
+        content={
+            "success": False,
+            "message": str(exc),
+            "code": "MODEL_INVALID",
+        },
+    )
+
+
+@app.exception_handler(GrowthStageError)
+async def growth_stage_error_handler(
+    request: Request, exc: GrowthStageError
+):
+    logger.warning(
+        "GrowthStageError on %s: %s", request.url.path, exc
+    )
+    return JSONResponse(
+        status_code=502,
+        content={
+            "success": False,
+            "message": str(exc),
+            "code": "MODEL_INVALID",
+        },
+    )
+
+
+@app.exception_handler(WaterStressError)
+async def water_stress_error_handler(
+    request: Request, exc: WaterStressError
+):
+    logger.warning(
+        "WaterStressError on %s: %s", request.url.path, exc
     )
     return JSONResponse(
         status_code=502,
@@ -801,6 +915,161 @@ def detect_disease(
     """
     try:
         return DiseaseDetectionController().detect(file, crop_name)
+    except UploadError as error:
+        raise HTTPException(
+            status_code=400,
+            detail={"success": False, "message": str(error)},
+        )
+
+
+# ==========================================================
+# AI Pest Detection API
+# ==========================================================
+
+@app.post("/api/pest/detect", response_model=PestDetectionOut)
+def detect_pest(
+    file: UploadFile = File(...),
+    crop_name: str | None = Form(default=None),
+    _current: User = Depends(get_current_user),
+):
+    """Analyse an uploaded crop image (JPG/JPEG/PNG, max 5 MB).
+
+    The image is validated by the existing secure upload layer, then
+    passed to the configured pest-model provider. No trained model is
+    bundled, so the API returns a controlled ``MODEL_NOT_CONFIGURED``
+    status - never a fabricated pest identification.
+
+    Open to any authenticated user (farmers are the intended users);
+    the optional ``crop_name`` form field is passed to the provider as
+    crop context.
+    """
+    try:
+        return PestDetectionController().detect(file, crop_name)
+    except UploadError as error:
+        raise HTTPException(
+            status_code=400,
+            detail={"success": False, "message": str(error)},
+        )
+
+
+# ==========================================================
+# AI Weed Detection API
+# ==========================================================
+
+@app.post("/api/weed/detect", response_model=WeedDetectionOut)
+def detect_weed(
+    file: UploadFile = File(...),
+    crop_name: str | None = Form(default=None),
+    _current: User = Depends(get_current_user),
+):
+    """Analyse an uploaded crop image (JPG/JPEG/PNG, max 5 MB).
+
+    The image is validated by the existing secure upload layer, then
+    passed to the configured weed-model provider. No trained model is
+    bundled, so the API returns a controlled ``MODEL_NOT_CONFIGURED``
+    status - never a fabricated weed identification.
+
+    Open to any authenticated user (farmers are the intended users);
+    the optional ``crop_name`` form field is passed to the provider as
+    crop context.
+    """
+    try:
+        return WeedDetectionController().detect(file, crop_name)
+    except UploadError as error:
+        raise HTTPException(
+            status_code=400,
+            detail={"success": False, "message": str(error)},
+        )
+
+
+# ==========================================================
+# AI Nutrient Deficiency Detection API
+# ==========================================================
+
+@app.post(
+    "/api/nutrient-deficiency/detect",
+    response_model=NutrientDeficiencyOut,
+)
+def detect_nutrient_deficiency(
+    file: UploadFile = File(...),
+    crop_name: str | None = Form(default=None),
+    _current: User = Depends(get_current_user),
+):
+    """Analyse an uploaded crop image (JPG/JPEG/PNG, max 5 MB).
+
+    The image is validated by the existing secure upload layer, then
+    passed to the configured nutrient-deficiency model provider. No
+    trained model is bundled, so the API returns a controlled
+    ``MODEL_NOT_CONFIGURED`` status - never a fabricated nutrient
+    deficiency identification.
+
+    Open to any authenticated user (farmers are the intended users);
+    the optional ``crop_name`` form field is passed to the provider as
+    crop context.
+    """
+    try:
+        return NutrientDeficiencyController().detect(file, crop_name)
+    except UploadError as error:
+        raise HTTPException(
+            status_code=400,
+            detail={"success": False, "message": str(error)},
+        )
+
+
+# ==========================================================
+# AI Crop Growth Stage Detection API
+# ==========================================================
+
+@app.post("/api/growth-stage/detect", response_model=GrowthStageOut)
+def detect_growth_stage(
+    file: UploadFile = File(...),
+    crop_name: str | None = Form(default=None),
+    _current: User = Depends(get_current_user),
+):
+    """Analyse an uploaded crop image (JPG/JPEG/PNG, max 5 MB).
+
+    The image is validated by the existing secure upload layer, then
+    passed to the configured crop-growth-stage model provider. No
+    trained model is bundled, so the API returns a controlled
+    ``MODEL_NOT_CONFIGURED`` status - never a fabricated growth stage.
+
+    Open to any authenticated user (farmers are the intended users);
+    the optional ``crop_name`` form field is passed to the provider as
+    crop context.
+    """
+    try:
+        return GrowthStageController().detect(file, crop_name)
+    except UploadError as error:
+        raise HTTPException(
+            status_code=400,
+            detail={"success": False, "message": str(error)},
+        )
+
+
+# ==========================================================
+# AI Crop Water Stress Detection API (Phase 1.11)
+# ==========================================================
+
+@app.post("/api/water-stress/detect", response_model=WaterStressOut)
+def detect_water_stress(
+    file: UploadFile = File(...),
+    crop_name: str | None = Form(default=None),
+    _current: User = Depends(get_current_user),
+):
+    """Analyse an uploaded crop image (JPG/JPEG/PNG, max 5 MB).
+
+    The image is validated by the existing secure upload layer, then
+    passed to the configured crop-water-stress model provider. No
+    trained model is bundled, so the API returns a controlled
+    ``MODEL_NOT_CONFIGURED`` status - never a fabricated water stress
+    level.
+
+    Open to any authenticated user (farmers are the intended users);
+    the optional ``crop_name`` form field is passed to the provider as
+    crop context.
+    """
+    try:
+        return WaterStressController().detect(file, crop_name)
     except UploadError as error:
         raise HTTPException(
             status_code=400,

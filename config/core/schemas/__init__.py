@@ -35,6 +35,11 @@ from config.core.schemas.disease import (
 from config.core.schemas.weather import WeatherOut
 from config.core.schemas.upload import UploadOut
 from config.core.schemas.disease_detection import DiseaseDetectionOut
+from config.core.schemas.pest_detection import PestDetectionOut
+from config.core.schemas.weed_detection import WeedDetectionOut
+from config.core.schemas.nutrient_deficiency import NutrientDeficiencyOut
+from config.core.schemas.growth_stage import GrowthStageOut
+from config.core.schemas.water_stress import WaterStressOut
 from config.core.schemas.prediction import (
     PredictionOut,
     PredictionRequest,
@@ -91,6 +96,11 @@ __all__ = [
     "WeatherOut",
     "UploadOut",
     "DiseaseDetectionOut",
+    "PestDetectionOut",
+    "WeedDetectionOut",
+    "NutrientDeficiencyOut",
+    "GrowthStageOut",
+    "WaterStressOut",
     "PredictionOut",
     "PredictionRequest",
     "SoilContext",

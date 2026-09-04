@@ -29,9 +29,14 @@ from config.core.services.intent_router import (
     INTENT_DISEASE_DETECTION,
     INTENT_HELP,
     INTENT_MY_FARM,
+    INTENT_NUTRIENT_DEFICIENCY,
+    INTENT_GROWTH_STAGE,
+    INTENT_PEST_DETECTION,
     INTENT_SOIL,
     INTENT_UNKNOWN,
+    INTENT_WATER_STRESS,
     INTENT_WEATHER,
+    INTENT_WEED_DETECTION,
     classify_intent,
 )
 
@@ -57,5 +62,20 @@ class AssistantController:
 
         if intent == INTENT_WEATHER:
             return self.service.weather()
+
+        if intent == INTENT_PEST_DETECTION:
+            return self.service.pointer(intent)
+
+        if intent == INTENT_WEED_DETECTION:
+            return self.service.pointer(intent)
+
+        if intent == INTENT_NUTRIENT_DEFICIENCY:
+            return self.service.pointer(intent)
+
+        if intent == INTENT_GROWTH_STAGE:
+            return self.service.pointer(intent)
+
+        if intent == INTENT_WATER_STRESS:
+            return self.service.pointer(intent)
 
         return self.service.pointer(intent)

@@ -24,9 +24,14 @@ from config.core.services.intent_router import (
     INTENT_DISEASE_DETECTION,
     INTENT_HELP,
     INTENT_MY_FARM,
+    INTENT_NUTRIENT_DEFICIENCY,
+    INTENT_GROWTH_STAGE,
+    INTENT_PEST_DETECTION,
     INTENT_SOIL,
     INTENT_UNKNOWN,
+    INTENT_WATER_STRESS,
     INTENT_WEATHER,
+    INTENT_WEED_DETECTION,
 )
 from config.core.services.my_farm_service import MyFarmService
 from config.core.services.recommendation_service import (
@@ -50,6 +55,24 @@ _POINTERS = {
     ),
     INTENT_DISEASE_DETECTION: (
         "रोग पहचान के लिए पत्ती की फोटो लेकर 'रोग पहचान' स्क्रीन का उपयोग करें।"
+    ),
+    INTENT_PEST_DETECTION: (
+        "कीट पहचान के लिए पत्ती की फोटो लेकर 'कीट पहचान' स्क्रीन का उपयोग करें।"
+    ),
+    INTENT_WEED_DETECTION: (
+        "खरपतवार पहचान के लिए पत्ती की फोटो लेकर 'खरपतवार पहचान' स्क्रीन का उपयोग करें।"
+    ),
+    INTENT_NUTRIENT_DEFICIENCY: (
+        "पोषक तत्व की कमी पहचान के लिए पत्ती की फोटो लेकर "
+        "'पोषक तत्व पहचान' स्क्रीन का उपयोग करें।"
+    ),
+    INTENT_GROWTH_STAGE: (
+        "फसल की वृद्धि अवस्था पहचान के लिए पत्ती की फोटो लेकर "
+        "'वृद्धि अवस्था पहचान' स्क्रीन का उपयोग करें।"
+    ),
+    INTENT_WATER_STRESS: (
+        "जल तनाव पहचान के लिए पत्ती या फसल की फोटो लेकर "
+        "'जल तनाव पहचान' स्क्रीन का उपयोग करें।"
     ),
     INTENT_CROP_ADVICE: (
         "फसल की सलाह के लिए 'AI सलाह' स्क्रीन में फसल, मिट्टी और मौसम की "
