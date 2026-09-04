@@ -230,6 +230,8 @@ class AppStrings {
   static const String stopVoice = 'बोलना बंद करें';
   static const String voiceUnavailable =
       'वॉइस उपलब्ध नहीं (ऑफलाइन या अनुमति नहीं)';
+  static const String offlineVoiceUnavailable =
+      'ऑफ़लाइन होने पर वॉइस उपलब्ध नहीं। इंटरनेट कनेक्ट करें।';
   static const String micPermissionNeeded =
       'माइक्रोफोन अनुमति चाहिए। सेटिंग्स से दें।';
   static const String farmSectionLabel = 'खेत';

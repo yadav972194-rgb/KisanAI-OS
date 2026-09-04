@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_to_text.dart';
@@ -15,16 +16,25 @@ class VoiceService extends ChangeNotifier {
 
   final SpeechToText _speech = SpeechToText();
   final FlutterTts _tts = FlutterTts();
+  final Connectivity _connectivity = Connectivity();
 
   bool _speechAvailable = false;
   bool _isListening = false;
   bool _isSpeaking = false;
+  bool _isOnline = true;
   String? _lastError;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
 
   bool get isListening => _isListening;
   bool get isSpeaking => _isSpeaking;
   bool get speechAvailable => _speechAvailable;
+  bool get isOnline => _isOnline;
   String? get lastError => _lastError;
+
+  /// True when voice input is usable: the device is online and the STT engine
+  /// initialized successfully. Used by the Assistant UI to enable/disable the
+  /// microphone button and fall back to a textual mic-off state.
+  bool get isVoiceAvailable => _isOnline && _speechAvailable;
 
   /// Initialize both STT and TTS engines.
   ///
@@ -73,12 +83,32 @@ class VoiceService extends ChangeNotifier {
         }
       });
 
+      _setupConnectivityMonitoring();
+
       return _speechAvailable;
     } catch (e) {
       _lastError = e.toString();
       _speechAvailable = false;
       notifyListeners();
       return false;
+    }
+  }
+
+  /// Watches connectivity changes so the voice UI can fall back to a disabled
+  /// mic state when the device is offline/airplane mode. Fully defensive so a
+  /// missing platform channel (e.g. in widget tests) never breaks startup.
+  void _setupConnectivityMonitoring() {
+    try {
+      _connectivitySub =
+          _connectivity.onConnectivityChanged.listen((results) {
+        final online = !results.contains(ConnectivityResult.none);
+        if (online != _isOnline) {
+          _isOnline = online;
+          notifyListeners();
+        }
+      });
+    } catch (_) {
+      _isOnline = true;
     }
   }
 
@@ -89,8 +119,10 @@ class VoiceService extends ChangeNotifier {
   Future<bool> startListening({
     required void Function(String text, bool isFinal) onResult,
   }) async {
-    if (!_speechAvailable) {
-      _lastError = 'Speech recognition not available';
+    if (!isVoiceAvailable) {
+      _lastError = _isOnline
+          ? 'Speech recognition not available'
+          : 'No internet connection';
       return false;
     }
     if (_isListening) return true;
@@ -173,6 +205,7 @@ class VoiceService extends ChangeNotifier {
 
   @override
   void dispose() {
+    _connectivitySub?.cancel();
     _speech.cancel();
     _tts.stop();
     super.dispose();

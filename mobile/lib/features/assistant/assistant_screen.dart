@@ -351,8 +351,10 @@ class _InputBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final voiceAvailable = voiceService.speechAvailable && !voiceService.isListening;
-    final voiceUnavailableReason = voiceService.lastError;
+    final voiceAvailable =
+        voiceService.isVoiceAvailable && !voiceService.isListening;
+    final voiceUnavailableReason = voiceService.lastError ??
+        (voiceService.isOnline ? null : AppStrings.offlineVoiceUnavailable);
 
     return SafeArea(
       top: false,

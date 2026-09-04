@@ -83,11 +83,20 @@ class SplashGate extends StatefulWidget {
 }
 
 class _SplashGateState extends State<SplashGate> {
+  static const Duration _minSplashDuration = Duration(milliseconds: 2000);
+
+  bool _minTimeElapsed = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AuthController>().restoreSession();
+    });
+    // Enforce a minimum branded-splash display time (~2s) so the KisanAI
+    // logo/hero are always shown even when session restore completes fast.
+    Future<void>.delayed(_minSplashDuration, () {
+      if (mounted) setState(() => _minTimeElapsed = true);
     });
   }
 
@@ -95,13 +104,16 @@ class _SplashGateState extends State<SplashGate> {
   Widget build(BuildContext context) {
     return Consumer<AuthController>(
       builder: (context, auth, _) {
+        if (auth.status == AuthStatus.unknown || !_minTimeElapsed) {
+          return const SplashScreen();
+        }
         switch (auth.status) {
-          case AuthStatus.unknown:
-            return const SplashScreen();
           case AuthStatus.authenticated:
             return HomeScreen();
           case AuthStatus.unauthenticated:
             return LoginScreen();
+          case AuthStatus.unknown:
+            return const SplashScreen();
         }
       },
     );

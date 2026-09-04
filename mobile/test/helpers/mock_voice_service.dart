@@ -5,17 +5,26 @@ import 'package:kisanai/core/voice/voice_service.dart';
 class MockVoiceService extends ChangeNotifier implements VoiceService {
   MockVoiceService();
 
-  @override
   bool _speechAvailable = true;
-
-  @override
   bool _isListening = false;
-
-  @override
   bool _isSpeaking = false;
-
-  @override
+  bool _isOnline = true;
   String? _lastError;
+
+  void setSpeechAvailable(bool value) {
+    _speechAvailable = value;
+    notifyListeners();
+  }
+
+  void setOnline(bool value) {
+    _isOnline = value;
+    notifyListeners();
+  }
+
+  void setError(String? value) {
+    _lastError = value;
+    notifyListeners();
+  }
 
   @override
   bool get isListening => _isListening;
@@ -25,6 +34,12 @@ class MockVoiceService extends ChangeNotifier implements VoiceService {
 
   @override
   bool get speechAvailable => _speechAvailable;
+
+  @override
+  bool get isOnline => _isOnline;
+
+  @override
+  bool get isVoiceAvailable => _isOnline && _speechAvailable;
 
   @override
   String? get lastError => _lastError;
@@ -40,7 +55,13 @@ class MockVoiceService extends ChangeNotifier implements VoiceService {
   Future<bool> startListening({
     required void Function(String text, bool isFinal) onResult,
   }) async {
-    if (!_speechAvailable) return false;
+    if (!isVoiceAvailable) {
+      _lastError = _isOnline
+          ? 'Speech recognition not available'
+          : 'No internet connection';
+      notifyListeners();
+      return false;
+    }
     if (_isListening) return true;
     _isListening = true;
     notifyListeners();
@@ -87,9 +108,4 @@ class MockVoiceService extends ChangeNotifier implements VoiceService {
 
   @override
   Future<bool> isHindiSupported() async => true;
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
 }

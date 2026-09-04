@@ -4,6 +4,7 @@ import 'package:kisanai/app.dart';
 import 'package:kisanai/core/network/api_client.dart';
 import 'package:kisanai/core/storage/token_storage.dart';
 import 'package:kisanai/dependencies.dart';
+import 'package:kisanai/features/splash/splash_screen.dart';
 
 import 'helpers/fake_backend.dart';
 
@@ -26,6 +27,14 @@ void main() {
     return AppDependencies(apiClient: client, tokenStorage: storage);
   }
 
+  // The branded splash is enforced for a minimum ~2s in SplashGate, so any
+  // test that must reach the post-splash screen advances the fake clock past
+  // that minimum duration (tester.pump(Duration) is virtual time, not real).
+  Future<void> passSplash(WidgetTester tester) async {
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 2100));
+  }
+
   Future<void> login(WidgetTester tester) async {
     await tester.enterText(find.byType(TextFormField).first, 'ravi');
     await tester.enterText(find.byType(TextFormField).at(1), 'secret');
@@ -37,8 +46,7 @@ void main() {
   testWidgets('no saved session starts at the login screen', (tester) async {
     final deps = buildDeps();
     await tester.pumpWidget(KisanApp(dependencies: deps));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 150));
+    await passSplash(tester);
 
     expect(find.text('लॉगिन करें'), findsOneWidget);
     expect(find.byType(TextFormField), findsNWidgets(2));
@@ -56,8 +64,7 @@ void main() {
     final deps = AppDependencies(apiClient: client, tokenStorage: storage);
 
     await tester.pumpWidget(KisanApp(dependencies: deps));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 150));
+    await passSplash(tester);
 
     expect(find.text('किसान होम'), findsOneWidget);
     expect(find.text('लॉगिन करें'), findsNothing);
@@ -68,8 +75,7 @@ void main() {
     useTallSurface(tester);
     final deps = buildDeps();
     await tester.pumpWidget(KisanApp(dependencies: deps));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 150));
+    await passSplash(tester);
     await login(tester);
 
     expect(find.text('किसान होम'), findsOneWidget);
@@ -90,8 +96,7 @@ void main() {
   testWidgets('weather card opens the live weather screen', (tester) async {
     final deps = buildDeps();
     await tester.pumpWidget(KisanApp(dependencies: deps));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 150));
+    await passSplash(tester);
     await login(tester);
 
     await tester.tap(find.text('मौसम'));
@@ -106,8 +111,7 @@ void main() {
   testWidgets('logout from profile returns to login', (tester) async {
     final deps = buildDeps();
     await tester.pumpWidget(KisanApp(dependencies: deps));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 150));
+    await passSplash(tester);
     await login(tester);
 
     await tester.tap(find.byTooltip('प्रोफ़ाइल'));
@@ -123,6 +127,26 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 150));
 
+    expect(find.text('लॉगिन करें'), findsOneWidget);
+  });
+
+  testWidgets('branded splash is shown for the enforced minimum duration',
+      (tester) async {
+    final deps = buildDeps();
+    await tester.pumpWidget(KisanApp(dependencies: deps));
+
+    // Splash is shown on the initial frame.
+    await tester.pump();
+    expect(find.byType(SplashScreen), findsOneWidget);
+
+    // Just before the enforced ~2s minimum it is still showing.
+    await tester.pump(const Duration(milliseconds: 1500));
+    expect(find.byType(SplashScreen), findsOneWidget);
+    expect(find.text('लॉगिन करें'), findsNothing);
+
+    // Past the minimum it transitions to login.
+    await tester.pump(const Duration(milliseconds: 700));
+    expect(find.byType(SplashScreen), findsNothing);
     expect(find.text('लॉगिन करें'), findsOneWidget);
   });
 }
