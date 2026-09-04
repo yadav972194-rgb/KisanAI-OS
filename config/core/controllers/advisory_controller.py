@@ -10,8 +10,8 @@ from config.core.services.advisory_service import AdvisoryService
 class AdvisoryController:
     """KisanAI Agricultural Advisory Controller"""
 
-    def __init__(self):
-        self.service = AdvisoryService()
+    def __init__(self, service=None):
+        self.service = service or AdvisoryService()
 
     def generate_advisory(
         self,

@@ -20,4 +20,4 @@ def banner():
 
 if __name__ == "__main__":
     banner()
-    print("Current Time:", current_time())
+    print("Current Time:", current_time())  

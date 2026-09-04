@@ -67,3 +67,119 @@ class ConsoleOtpProvider(OtpProvider):
             purpose,
             code,
         )
+
+
+class TwilioOtpProvider(OtpProvider):
+    """Production SMS/OTP delivery provider backed by Twilio's Messages API.
+
+    Delivers codes over HTTPS to the stable Twilio Messages endpoint::
+
+        POST /2010-04-01/Accounts/{account_sid}/Messages.json
+
+    Delivery is reported as successful only when Twilio answers HTTP
+    200/201. Anything else - transport/network errors, throttling or a
+    non-2xx response - raises ``OtpProviderError`` so the service responds
+    honestly ("Unable to send OTP") instead of claiming a delivery that
+    did not happen.
+
+    Security:
+      - credentials (Account SID / Auth Token / sender) are read through
+        the settings layer (server-controlled), never from client input,
+        and never logged or leaked in error messages;
+      - the OTP code is never logged;
+      - gateway internals and Twilio error bodies never reach the caller.
+    """
+
+    MESSAGES_URL = (
+        "https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json"
+    )
+
+    def __init__(
+        self,
+        account_sid,
+        auth_token,
+        messaging_service_sid=None,
+        from_number=None,
+        timeout=10,
+        http_client=None,
+    ):
+        self.account_sid = account_sid
+        self.auth_token = auth_token
+        self.messaging_service_sid = messaging_service_sid
+        self.from_number = from_number
+        self.timeout = timeout
+        # Optional injected HTTP client (used by tests); when None a real
+        # ``httpx.Client`` is created lazily per send.
+        self._http_client = http_client
+
+    def send(self, mobile: str, code: str, purpose: str) -> None:
+        if not (self.account_sid and self.auth_token):
+            raise OtpProviderError(
+                "Twilio OTP provider is not configured"
+            )
+
+        if not (self.messaging_service_sid or self.from_number):
+            raise OtpProviderError(
+                "Twilio OTP provider is not configured"
+            )
+
+        payload = {
+            "To": (mobile or "").strip(),
+            "Body": f"Your KisanAI verification code is {code}.",
+        }
+
+        if self.messaging_service_sid:
+            payload["MessagingServiceSid"] = self.messaging_service_sid
+        else:
+            payload["From"] = self.from_number
+
+        url = self.MESSAGES_URL.format(sid=self.account_sid)
+
+        try:
+            response = self._post(url, payload)
+        except OtpProviderError:
+            raise
+        except Exception as error:  # network / transport failure
+            logger.warning(
+                "Twilio OTP delivery failed (purpose=%s)", purpose
+            )
+            raise OtpProviderError(
+                "Unable to send OTP. Please try again later."
+            ) from error
+
+        if response.status_code not in (200, 201):
+            logger.warning(
+                "Twilio OTP delivery rejected "
+                "(status=%s, purpose=%s)",
+                response.status_code,
+                purpose,
+            )
+            raise OtpProviderError(
+                "Unable to send OTP. Please try again later."
+            )
+
+        logger.info("OTP delivered via Twilio (purpose=%s)", purpose)
+
+    def _post(self, url, payload):
+        """POST the payload to Twilio, returning the response.
+
+        ``httpx`` is imported lazily so importing this module (and the
+        whole providers package) never requires the optional runtime
+        dependency; only an actual real Twilio send needs it, and a
+        missing/broken client degrades to ``OtpProviderError``.
+        """
+        if self._http_client is not None:
+            return self._http_client.post(url, data=payload)
+
+        try:
+            import httpx
+        except ImportError as error:
+            raise OtpProviderError(
+                "Unable to send OTP. Please try again later."
+            ) from error
+
+        with httpx.Client(
+            auth=(self.account_sid, self.auth_token),
+            timeout=self.timeout,
+        ) as client:
+            return client.post(url, data=payload)

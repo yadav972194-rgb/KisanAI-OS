@@ -105,6 +105,18 @@ class Settings(BaseSettings):
     # the per-mobile limits above remain the primary safeguard.
     OTP_IP_REQUEST_LIMIT: int = 60
 
+    # Production OTP delivery via Twilio (only used when OTP_PROVIDER=twilio).
+    # Credentials are server-controlled; NEVER sourced from client input.
+    # They are never logged or returned to callers.
+    TWILIO_ACCOUNT_SID: str = ""
+    TWILIO_AUTH_TOKEN: str = ""
+
+    # Sender for Twilio Messages: a Messaging Service SID is preferred;
+    # alternatively a From phone number. One of the two is required for
+    # the Twilio provider to be considered configured.
+    TWILIO_MESSAGING_SERVICE_SID: str = ""
+    TWILIO_FROM_NUMBER: str = ""
+
     # Rate limiting (Phase 11 security): max login attempts per identity
     # before temporary lockout, and the lockout window in seconds.
     LOGIN_MAX_ATTEMPTS: int = 5
@@ -150,6 +162,101 @@ class Settings(BaseSettings):
     DISEASE_MODEL_INPUT_SIZE: int = 224
 
     # ==========================
+    # AI Pest Detection (Phase 1.6)
+    # ==========================
+
+    # Server-controlled path to a trained pest-detection model.
+    # Empty = model not configured; the API then returns a controlled
+    # MODEL_NOT_CONFIGURED status instead of a fake pest identification.
+    # NEVER sourced from client input.
+    PEST_MODEL_PATH: str = ""
+
+    # Optional override for the pest-model labels file (one class name
+    # per line, in the model's output order). Empty = auto-derive a
+    # sibling "<model>.txt" file next to PEST_MODEL_PATH.
+    PEST_MODEL_LABELS: str = ""
+
+    # Square resize size (pixels) applied to the image before inference.
+    PEST_MODEL_INPUT_SIZE: int = 224
+
+    # ==========================
+    # AI Weed Detection (Phase 1.8)
+    # ==========================
+
+    # Server-controlled path to a trained weed-detection model.
+    # Empty = model not configured; the API then returns a controlled
+    # MODEL_NOT_CONFIGURED status instead of a fake weed identification.
+    # NEVER sourced from client input.
+    WEED_MODEL_PATH: str = ""
+
+    # Optional override for the weed-model labels file (one class name
+    # per line, in the model's output order). Empty = auto-derive a
+    # sibling "<model>.txt" file next to WEED_MODEL_PATH.
+    WEED_MODEL_LABELS: str = ""
+
+    # Square resize size (pixels) applied to the image before inference.
+    WEED_MODEL_INPUT_SIZE: int = 224
+
+    # ==========================
+    # AI Nutrient Deficiency Detection (Phase 1.9)
+    # ==========================
+
+    # Server-controlled path to a trained nutrient-deficiency detection
+    # model. Empty = model not configured; the API then returns a
+    # controlled MODEL_NOT_CONFIGURED status instead of a fake nutrient
+    # deficiency identification.
+    # NEVER sourced from client input.
+    NUTRIENT_DEFICIENCY_MODEL_PATH: str = ""
+
+    # Optional override for the nutrient-deficiency model labels file
+    # (one class name per line, in the model's output order). Empty =
+    # auto-derive a sibling "<model>.txt" file next to the model.
+    NUTRIENT_DEFICIENCY_MODEL_LABELS: str = ""
+
+    # Square resize size (pixels) applied to the image before inference.
+    NUTRIENT_DEFICIENCY_MODEL_INPUT_SIZE: int = 224
+
+    # ==========================
+    # AI Crop Growth Stage Detection (Phase 1.10)
+    # ==========================
+
+    # Server-controlled path to a trained crop-growth-stage detection
+    # model. Empty = model not configured; the API then returns a
+    # controlled MODEL_NOT_CONFIGURED status instead of a fabricated
+    # growth stage.
+    # NEVER sourced from client input.
+    GROWTH_STAGE_MODEL_PATH: str = ""
+
+    # Optional override for the crop-growth-stage model labels file (one
+    # class name per line, in the model's output order). Empty =
+    # auto-derive a sibling "<model>.txt" file next to the model.
+    GROWTH_STAGE_MODEL_LABELS: str = ""
+
+    # Square resize size (pixels) applied to the image before inference.
+    GROWTH_STAGE_MODEL_INPUT_SIZE: int = 224
+
+    # ==========================
+    # AI Crop Water Stress Detection (Phase 1.11)
+    # ==========================
+
+    # Server-controlled path to a trained crop-water-stress detection
+    # model. Empty = model not configured; the API then returns a
+    # controlled MODEL_NOT_CONFIGURED status instead of a fabricated
+    # water stress level.
+    # NEVER sourced from client input.
+    WATER_STRESS_MODEL_PATH: str = ""
+
+    # Optional override for the crop-water-stress model labels file (one
+    # class name per line, in the model's output order). Empty =
+    # auto-derive a sibling "<model>.txt" file next to the model.
+    # Labels normally match the stable stress scale: NO_STRESS /
+    # MILD_STRESS / MODERATE_STRESS / SEVERE_STRESS.
+    WATER_STRESS_MODEL_LABELS: str = ""
+
+    # Square resize size (pixels) applied to the image before inference.
+    WATER_STRESS_MODEL_INPUT_SIZE: int = 224
+
+    # ==========================
     # AI Prediction Engine
     # ==========================
 
@@ -158,6 +265,16 @@ class Settings(BaseSettings):
     # MODEL_NOT_CONFIGURED status instead of a fabricated prediction.
     # NEVER sourced from client input.
     PREDICTION_MODEL_PATH: str = ""
+
+    # Optional override for the prediction-model labels file (one class
+    # name per line, in the model's output order) - only used when the
+    # model outputs class scores. Empty = auto-derive a sibling
+    # "<model>.txt" file next to PREDICTION_MODEL_PATH.
+    PREDICTION_MODEL_LABELS: str = ""
+
+    # Reserved for a future image-input prediction model. Feature-based
+    # prediction (structured crop/soil/weather context) ignores this.
+    PREDICTION_MODEL_INPUT_SIZE: int = 224
 
     # ==========================
     # Recommendation Engine
@@ -173,6 +290,43 @@ class Settings(BaseSettings):
     # relevant when RECOMMENDATION_PROVIDER is not "rules").
     # NEVER sourced from client input.
     RECOMMENDATION_MODEL_PATH: str = ""
+
+    # Optional override for the recommendation-model labels file (one
+    # class name per line, in the model's output order) - only used when
+    # the model outputs class scores. Empty = auto-derive a sibling
+    # "<model>.txt" file next to RECOMMENDATION_MODEL_PATH.
+    RECOMMENDATION_MODEL_LABELS: str = ""
+
+    # Reserved for a future image-input recommendation model. Feature-
+    # based recommendation (structured crop/soil/weather context) ignores
+    # this.
+    RECOMMENDATION_MODEL_INPUT_SIZE: int = 224
+
+    # ==========================
+    # Advisory Engine
+    # ==========================
+
+    # Provider selector: "rules" (default, deterministic rule-based, no
+    # model required) or a future AI provider name. Non-rule providers
+    # need a validated model, otherwise MODEL_NOT_CONFIGURED is returned.
+    # NEVER sourced from client input.
+    ADVISORY_PROVIDER: str = "rules"
+
+    # Server-controlled path to a validated advisory model (only
+    # relevant when ADVISORY_PROVIDER is not "rules").
+    # NEVER sourced from client input.
+    ADVISORY_MODEL_PATH: str = ""
+
+    # Optional override for the advisory-model labels file (one class
+    # name per line, in the model's output order) - only used when the
+    # model outputs class scores. Empty = auto-derive a sibling
+    # "<model>.txt" file next to ADVISORY_MODEL_PATH.
+    ADVISORY_MODEL_LABELS: str = ""
+
+    # Reserved for a future image-input advisory model. Feature-
+    # based advisory (structured crop/soil/weather context) ignores
+    # this.
+    ADVISORY_MODEL_INPUT_SIZE: int = 224
 
     # ==========================
     # Derived helpers

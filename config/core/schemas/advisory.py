@@ -3,6 +3,8 @@ KisanAI OS
 Advisory Schemas
 """
 
+from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -54,3 +56,8 @@ class AdvisoryOut(BaseModel):
     recommendations: list[str]
     warnings: list[str]
     generated_at: str
+    status: str = "ADVISORY_AVAILABLE"
+    confidence: Optional[float] = None
+    model: Optional[str] = None
+    provider: Optional[str] = None
+    message: str = ""
