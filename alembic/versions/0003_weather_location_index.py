@@ -18,11 +18,10 @@ depends_on = None
 
 def _index_exists(name):
     bind = op.get_bind()
-    return name in [
-        row[0] for row in bind.exec_driver_sql(
-            "SELECT name FROM sqlite_master WHERE type='index'"
-        ).fetchall()
-    ]
+    return any(
+        index["name"] == name
+        for index in inspect(bind).get_indexes("weather")
+    )
 
 
 def upgrade() -> None:
