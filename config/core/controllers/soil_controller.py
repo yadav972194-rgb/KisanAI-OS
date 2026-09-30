@@ -22,6 +22,12 @@ class SoilController:
     def get_all_soils(self):
         return self.service.get_all_soils()
 
+    def get_soils_for_farmer(self, farmer_id):
+        return self.service.get_soils_for_farmer(farmer_id)
+
+    def get_soil_for_farmer(self, farmer_id, soil_id):
+        return self.service.get_soil_for_farmer(farmer_id, soil_id)
+
     def update_soil(self, soil_id, soil_data):
         return self.service.update_soil(
             soil_id,

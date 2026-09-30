@@ -73,6 +73,37 @@ class FarmerService:
             for farmer in self.repo.get_all_farmers()
         ]
 
+    def get_farmers_for_user(self, user_id):
+        """Ownership-scoped list: a farmer account is linked to exactly one
+        Farmer row, so this never returns another farmer's record."""
+        farm = self.repo.get_farmer_by_user_id(user_id)
+        return [farm.to_dict()] if farm is not None else []
+
+    def get_farmer_for_user(self, user_id, farmer_id):
+        """Ownership-scoped single read. Returns the same "Not Found"
+        result as a missing record so ids cannot be probed."""
+        farm = self.repo.get_farmer_by_id_for_user(user_id, farmer_id)
+
+        if farm is None:
+            return {
+                "success": False,
+                "message": "Farmer Not Found",
+            }
+
+        return farm.to_dict()
+
+    def get_farmer_by_mobile_for_user(self, user_id, mobile):
+        """Ownership-scoped mobile lookup."""
+        farm = self.repo.get_farmer_by_mobile_for_user(user_id, mobile)
+
+        if farm is None:
+            return {
+                "success": False,
+                "message": "Farmer Not Found",
+            }
+
+        return farm.to_dict()
+
     def update_farmer(self, farmer_id, farmer_data):
 
         existing = self.repo.get_farmer_by_id(farmer_id)

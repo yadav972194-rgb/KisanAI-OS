@@ -25,6 +25,15 @@ class FarmerController:
     def get_all_farmers(self):
         return self.service.get_all_farmers()
 
+    def get_farmers_for_user(self, user_id):
+        return self.service.get_farmers_for_user(user_id)
+
+    def get_farmer_for_user(self, user_id, farmer_id):
+        return self.service.get_farmer_for_user(user_id, farmer_id)
+
+    def get_farmer_by_mobile_for_user(self, user_id, mobile):
+        return self.service.get_farmer_by_mobile_for_user(user_id, mobile)
+
     def update_farmer(self, farmer_id, farmer_data):
         return self.service.update_farmer(
             farmer_id,

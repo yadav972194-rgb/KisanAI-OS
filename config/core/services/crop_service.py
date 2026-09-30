@@ -84,6 +84,35 @@ class CropService:
             for crop in self.repo.get_crops_by_farmer(farmer_id)
         ]
 
+    def get_crops_for_farmer(self, farmer_id):
+        """Ownership-scoped list: only crops inside the caller's own farm."""
+        if farmer_id is None:
+            return []
+
+        return [
+            crop.to_dict()
+            for crop in self.repo.get_crops_by_farmer(farmer_id)
+        ]
+
+    def get_crop_for_farmer(self, farmer_id, crop_id):
+        """Ownership-scoped single read. Returns the same "Not Found"
+        result as a missing record so ids cannot be probed."""
+        if farmer_id is None:
+            return {
+                "success": False,
+                "message": "Crop Not Found",
+            }
+
+        crop = self.repo.get_crop_by_id_for_farmer(farmer_id, crop_id)
+
+        if crop is None:
+            return {
+                "success": False,
+                "message": "Crop Not Found",
+            }
+
+        return crop.to_dict()
+
     def update_crop(self, crop_id, crop_data):
 
         existing = self.repo.get_crop_by_id(crop_id)

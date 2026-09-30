@@ -65,6 +65,36 @@ class SoilService:
             for soil in self.repo.get_all_soils()
         ]
 
+    def get_soils_for_farmer(self, farmer_id):
+        """Ownership-scoped list: only soil readings inside the caller's own
+        farm."""
+        if farmer_id is None:
+            return []
+
+        return [
+            soil.to_dict()
+            for soil in self.repo.get_soils_by_farmer(farmer_id)
+        ]
+
+    def get_soil_for_farmer(self, farmer_id, soil_id):
+        """Ownership-scoped single read. Returns the same "Not Found"
+        result as a missing record so ids cannot be probed."""
+        if farmer_id is None:
+            return {
+                "success": False,
+                "message": "Soil Not Found",
+            }
+
+        soil = self.repo.get_soil_by_id_for_farmer(farmer_id, soil_id)
+
+        if soil is None:
+            return {
+                "success": False,
+                "message": "Soil Not Found",
+            }
+
+        return soil.to_dict()
+
     def update_soil(self, soil_id, soil_data):
 
         existing = self.repo.get_soil_by_id(soil_id)

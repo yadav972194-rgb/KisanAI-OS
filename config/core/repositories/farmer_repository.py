@@ -38,6 +38,24 @@ class FarmerRepository:
         statement = select(Farmer).where(Farmer.user_id == user_id)
         return self.session.scalar(statement)
 
+    def get_farmer_by_id_for_user(self, user_id, farmer_id):
+        """Ownership-scoped read: only the farmer record linked to the
+        caller. A mismatch is indistinguishable from a missing record."""
+        statement = select(Farmer).where(
+            Farmer.user_id == user_id,
+            Farmer.farmer_id == farmer_id,
+        )
+        return self.session.scalar(statement)
+
+    def get_farmer_by_mobile_for_user(self, user_id, mobile):
+        """Ownership-scoped mobile lookup: a caller cannot probe another
+        farmer's mobile number."""
+        statement = select(Farmer).where(
+            Farmer.user_id == user_id,
+            Farmer.mobile == mobile,
+        )
+        return self.session.scalar(statement)
+
     def get_all_farmers(self):
         statement = select(Farmer).order_by(Farmer.farmer_id)
         return self.session.scalars(statement).all()

@@ -355,9 +355,18 @@ def test_soil_writes_admin_only(client, user_headers):
     assert client.delete("/api/soils/1", headers=user_headers).status_code == 403
 
 
-def test_authenticated_user_can_read_soils(client, user_headers, admin_headers):
+def test_authenticated_user_can_read_own_soils_only(
+    client, user_headers, admin_headers
+):
+    # A farmer may list the soil endpoint, but only sees its own farm's
+    # readings; a reading outside that farm is not readable.
     _, payload = _create_soil(client, admin_headers)
     soil_id = _soil_id(client, admin_headers, payload["soil_type"])
 
     assert client.get("/api/soils", headers=user_headers).status_code == 200
-    assert client.get(f"/api/soils/{soil_id}", headers=user_headers).status_code == 200
+    assert client.get(
+        f"/api/soils/{soil_id}", headers=user_headers
+    ).status_code == 404
+    assert client.get(
+        f"/api/soils/{soil_id}", headers=admin_headers
+    ).status_code == 200

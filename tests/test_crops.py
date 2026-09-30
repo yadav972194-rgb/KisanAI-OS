@@ -383,12 +383,21 @@ def test_crop_writes_admin_only(client, user_headers):
     assert client.delete("/api/crops/1", headers=user_headers).status_code == 403
 
 
-def test_authenticated_user_can_read_crops(client, user_headers, admin_headers):
+def test_authenticated_user_can_read_own_crops_only(
+    client, user_headers, admin_headers
+):
+    # A farmer may list the crop endpoint, but only sees its own farm's
+    # crops; a crop outside that farm is not readable.
     _, payload = _create_crop(client, admin_headers)
     crop_id = _crop_id(client, admin_headers, payload["crop_name"])
 
     assert client.get("/api/crops", headers=user_headers).status_code == 200
-    assert client.get(f"/api/crops/{crop_id}", headers=user_headers).status_code == 200
+    assert client.get(
+        f"/api/crops/{crop_id}", headers=user_headers
+    ).status_code == 404
+    assert client.get(
+        f"/api/crops/{crop_id}", headers=admin_headers
+    ).status_code == 200
 
 
 # ==========================================================

@@ -34,6 +34,15 @@ class CropRepository:
         statement = select(Crop).where(Crop.crop_name == crop_name)
         return self.session.scalar(statement)
 
+    def get_crop_by_id_for_farmer(self, farmer_id, crop_id):
+        """Ownership-scoped read: a crop is only visible inside the farm
+        that owns it."""
+        statement = select(Crop).where(
+            Crop.farmer_id == farmer_id,
+            Crop.crop_id == crop_id,
+        )
+        return self.session.scalar(statement)
+
     def get_crop_by_farmer_and_name(self, farmer_id, crop_name):
         statement = (
             select(Crop)

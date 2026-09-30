@@ -30,6 +30,15 @@ class SoilRepository:
     def get_soil_by_id(self, soil_id):
         return self.session.get(Soil, soil_id)
 
+    def get_soil_by_id_for_farmer(self, farmer_id, soil_id):
+        """Ownership-scoped read: a soil reading is only visible inside the
+        farm that owns it."""
+        statement = select(Soil).where(
+            Soil.farmer_id == farmer_id,
+            Soil.soil_id == soil_id,
+        )
+        return self.session.scalar(statement)
+
     def get_soils_by_farmer(self, farmer_id):
         """Admin-scoped helper: soils belonging to a farmer record."""
         statement = (

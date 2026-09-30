@@ -15,7 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from config.constants import ROLE_ADMIN
+from config.constants import ROLE_ADMIN, ROLE_EXPERT, ROLE_SUPER_ADMIN
 from config.core.api.auth import get_current_user, require_role
 from config.core.api.admin_routes import router as admin_router
 from config.core.controllers.advisory_controller import AdvisoryController
@@ -60,6 +60,7 @@ from config.core.exceptions import (
 )
 from config.core.logger import logger
 from config.core.models.user import User
+from config.core.repositories.farmer_repository import FarmerRepository
 from config.settings import settings
 from config.core.schemas import (
     AdvisoryOut,
@@ -194,6 +195,31 @@ def _ok(result):
         raise AppError(message)
 
     return result
+
+
+# ==========================================================
+# Farmer Read Scoping
+# ==========================================================
+
+# Roles allowed to read every farmer record (locked requirement:
+# "admin-only farmer data"). Every other authenticated role is scoped to
+# the single farm linked to it through farmers.user_id, resolved exactly
+# like /api/my-farm/* already does.
+STAFF_READ_ROLES = (ROLE_ADMIN, ROLE_SUPER_ADMIN, ROLE_EXPERT)
+
+
+def _farmer_read_scope(current_user: User, db: Session):
+    """Return (is_staff, own_farmer_id) for the legacy read endpoints.
+
+    Single decision point so the role rule is not repeated per route.
+    own_farmer_id is None for staff (no restriction) and for a farmer
+    account that has not created a farm yet (no rows of its own).
+    """
+    if (current_user.role or "").lower() in STAFF_READ_ROLES:
+        return True, None
+
+    farm = FarmerRepository(db).get_farmer_by_user_id(current_user.id)
+    return False, (farm.farmer_id if farm is not None else None)
 
 
 # ==========================================================
@@ -542,27 +568,42 @@ def create_farmer(
 @app.get("/api/farmers", response_model=list[FarmerOut])
 def get_all_farmers(
     db: Session = Depends(get_db),
-    _current: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    return FarmerController(db).get_all_farmers()
+    is_staff, _own_id = _farmer_read_scope(current_user, db)
+    if is_staff:
+        return FarmerController(db).get_all_farmers()
+    return FarmerController(db).get_farmers_for_user(current_user.id)
 
 
 @app.get("/api/farmers/by-mobile/{mobile}", response_model=FarmerOut)
 def get_farmer_by_mobile(
     mobile: str,
     db: Session = Depends(get_db),
-    _current: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    return _ok(FarmerController(db).get_farmer_by_mobile(mobile))
+    is_staff, _own_id = _farmer_read_scope(current_user, db)
+    if is_staff:
+        return _ok(FarmerController(db).get_farmer_by_mobile(mobile))
+    return _ok(
+        FarmerController(db).get_farmer_by_mobile_for_user(
+            current_user.id, mobile
+        )
+    )
 
 
 @app.get("/api/farmers/{farmer_id}", response_model=FarmerOut)
 def get_farmer(
     farmer_id: int,
     db: Session = Depends(get_db),
-    _current: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    return _ok(FarmerController(db).get_farmer(farmer_id))
+    is_staff, _own_id = _farmer_read_scope(current_user, db)
+    if is_staff:
+        return _ok(FarmerController(db).get_farmer(farmer_id))
+    return _ok(
+        FarmerController(db).get_farmer_for_user(current_user.id, farmer_id)
+    )
 
 
 @app.put("/api/farmers/{farmer_id}", response_model=MessageOut)
@@ -701,21 +742,27 @@ def create_crop(
 def get_all_crops(
     farmer_id: int | None = None,
     db: Session = Depends(get_db),
-    _current: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    if farmer_id is not None:
-        return _ok(CropController(db).get_crops_by_farmer(farmer_id))
+    is_staff, own_farmer_id = _farmer_read_scope(current_user, db)
+    if is_staff:
+        if farmer_id is not None:
+            return _ok(CropController(db).get_crops_by_farmer(farmer_id))
+        return CropController(db).get_all_crops()
 
-    return CropController(db).get_all_crops()
+    return CropController(db).get_crops_for_farmer(own_farmer_id)
 
 
 @app.get("/api/crops/{crop_id}", response_model=CropOut)
 def get_crop(
     crop_id: int,
     db: Session = Depends(get_db),
-    _current: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    return _ok(CropController(db).get_crop(crop_id))
+    is_staff, own_farmer_id = _farmer_read_scope(current_user, db)
+    if is_staff:
+        return _ok(CropController(db).get_crop(crop_id))
+    return _ok(CropController(db).get_crop_for_farmer(own_farmer_id, crop_id))
 
 
 @app.put("/api/crops/{crop_id}", response_model=MessageOut)
@@ -810,18 +857,24 @@ def create_soil(
 @app.get("/api/soils", response_model=list[SoilOut])
 def get_all_soils(
     db: Session = Depends(get_db),
-    _current: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    return SoilController(db).get_all_soils()
+    is_staff, own_farmer_id = _farmer_read_scope(current_user, db)
+    if is_staff:
+        return SoilController(db).get_all_soils()
+    return SoilController(db).get_soils_for_farmer(own_farmer_id)
 
 
 @app.get("/api/soils/{soil_id}", response_model=SoilOut)
 def get_soil(
     soil_id: int,
     db: Session = Depends(get_db),
-    _current: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    return _ok(SoilController(db).get_soil(soil_id))
+    is_staff, own_farmer_id = _farmer_read_scope(current_user, db)
+    if is_staff:
+        return _ok(SoilController(db).get_soil(soil_id))
+    return _ok(SoilController(db).get_soil_for_farmer(own_farmer_id, soil_id))
 
 
 @app.put("/api/soils/{soil_id}", response_model=MessageOut)

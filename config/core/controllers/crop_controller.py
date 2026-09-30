@@ -25,6 +25,12 @@ class CropController:
     def get_crops_by_farmer(self, farmer_id):
         return self.service.get_crops_by_farmer(farmer_id)
 
+    def get_crops_for_farmer(self, farmer_id):
+        return self.service.get_crops_for_farmer(farmer_id)
+
+    def get_crop_for_farmer(self, farmer_id, crop_id):
+        return self.service.get_crop_for_farmer(farmer_id, crop_id)
+
     def update_crop(self, crop_id, crop_data):
         return self.service.update_crop(
             crop_id,
