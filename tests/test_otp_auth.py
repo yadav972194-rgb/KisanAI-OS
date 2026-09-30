@@ -7,8 +7,20 @@ limiting and the OTP rate limiter itself. All OTP codes are exercised in
 mock mode (OTP_MOCK=true) where the code is returned as ``dev_otp``.
 """
 
+import logging
+
+import httpx
+
 import pytest
 
+from config.core.providers import get_otp_provider
+from config.core.providers.otp_provider import (
+    ConsoleOtpProvider,
+    MockOtpProvider,
+    OtpProviderError,
+    TwilioOtpProvider,
+)
+from config.settings import settings
 from tests.conftest import unique_mobile
 
 
@@ -366,3 +378,185 @@ def test_rate_limiter_reset_restores_capacity():
 
     limiter.reset("ns", "user1")
     assert limiter.allow("ns", "user1") is True
+
+
+# ==========================================================
+# Twilio OTP provider (Phase 1.5)
+# ==========================================================
+
+_TEST_SID = "AC" + "a" * 32
+_TEST_TOKEN = "tok" + "b" * 32
+_TEST_MESSAGING_SID = "MG" + "c" * 32
+_TEST_FROM = "+15551234567"
+
+
+class _FakeResponse:
+    def __init__(self, status_code):
+        self.status_code = status_code
+
+
+class _FakeClient:
+    """Injected httpx-like client - never makes a real network call."""
+
+    def __init__(self, status_code=200):
+        self.status_code = status_code
+        self.calls = []
+
+    def post(self, url, data):
+        self.calls.append((url, data))
+        return _FakeResponse(self.status_code)
+
+
+class _RaisingClient:
+    """Client that always raises a transport error."""
+
+    def post(self, url, data):
+        raise httpx.ConnectError("connection failed")
+
+
+def _twilio_provider(client=None, **kwargs):
+    defaults = {
+        "account_sid": _TEST_SID,
+        "auth_token": _TEST_TOKEN,
+        "messaging_service_sid": _TEST_MESSAGING_SID,
+        "from_number": None,
+    }
+    defaults.update(kwargs)
+    return TwilioOtpProvider(**defaults, http_client=client)
+
+
+def test_factory_twilio_selected_when_configured(monkeypatch):
+    monkeypatch.setattr(settings, "OTP_PROVIDER", "twilio")
+    monkeypatch.setattr(settings, "TWILIO_ACCOUNT_SID", _TEST_SID)
+    monkeypatch.setattr(settings, "TWILIO_AUTH_TOKEN", _TEST_TOKEN)
+    monkeypatch.setattr(
+        settings, "TWILIO_MESSAGING_SERVICE_SID", _TEST_MESSAGING_SID
+    )
+    monkeypatch.setattr(settings, "TWILIO_FROM_NUMBER", "")
+
+    provider = get_otp_provider()
+    assert isinstance(provider, TwilioOtpProvider)
+    assert provider.account_sid == _TEST_SID
+
+
+def test_factory_twilio_missing_credentials_falls_back(monkeypatch):
+    monkeypatch.setattr(settings, "OTP_PROVIDER", "twilio")
+    monkeypatch.setattr(settings, "TWILIO_ACCOUNT_SID", "")
+    monkeypatch.setattr(settings, "TWILIO_AUTH_TOKEN", "")
+    monkeypatch.setattr(settings, "TWILIO_MESSAGING_SERVICE_SID", "")
+    monkeypatch.setattr(settings, "TWILIO_FROM_NUMBER", "")
+    assert isinstance(get_otp_provider(), ConsoleOtpProvider)
+
+
+def test_factory_twilio_missing_sender_falls_back(monkeypatch):
+    monkeypatch.setattr(settings, "OTP_PROVIDER", "twilio")
+    monkeypatch.setattr(settings, "TWILIO_ACCOUNT_SID", _TEST_SID)
+    monkeypatch.setattr(settings, "TWILIO_AUTH_TOKEN", _TEST_TOKEN)
+    monkeypatch.setattr(settings, "TWILIO_MESSAGING_SERVICE_SID", "")
+    monkeypatch.setattr(settings, "TWILIO_FROM_NUMBER", "")
+    assert isinstance(get_otp_provider(), ConsoleOtpProvider)
+
+
+def test_twilio_send_http_200_success():
+    client = _FakeClient(200)
+    provider = _twilio_provider(client)
+
+    provider.send("+919999999999", "123456", "register")
+
+    assert len(client.calls) == 1
+    url, data = client.calls[0]
+    assert url.endswith(
+        f"/2010-04-01/Accounts/{_TEST_SID}/Messages.json"
+    )
+    assert data["To"] == "+919999999999"
+    assert data["MessagingServiceSid"] == _TEST_MESSAGING_SID
+    assert "123456" in data["Body"]
+
+
+def test_twilio_send_http_201_success():
+    client = _FakeClient(201)
+    provider = _twilio_provider(
+        client, messaging_service_sid=None, from_number=_TEST_FROM
+    )
+
+    provider.send("+919999999999", "123456", "register")
+
+    assert len(client.calls) == 1
+    url, data = client.calls[0]
+    assert data["From"] == _TEST_FROM
+    assert "MessagingServiceSid" not in data
+
+
+def test_twilio_send_http_4xx_raises():
+    provider = _twilio_provider(_FakeClient(400))
+    with pytest.raises(OtpProviderError):
+        provider.send("+919999999999", "123456", "register")
+
+
+def test_twilio_send_http_5xx_raises():
+    provider = _twilio_provider(_FakeClient(500))
+    with pytest.raises(OtpProviderError):
+        provider.send("+919999999999", "123456", "register")
+
+
+def test_twilio_send_network_error_raises():
+    provider = _twilio_provider(_RaisingClient())
+    with pytest.raises(OtpProviderError):
+        provider.send("+919999999999", "123456", "register")
+
+
+def test_twilio_send_missing_credentials_raises():
+    provider = _twilio_provider(
+        _FakeClient(200), account_sid="", auth_token=""
+    )
+    with pytest.raises(OtpProviderError):
+        provider.send("+919999999999", "123456", "register")
+
+
+def test_twilio_send_missing_sender_raises():
+    provider = _twilio_provider(
+        _FakeClient(200), messaging_service_sid=None, from_number=None
+    )
+    with pytest.raises(OtpProviderError):
+        provider.send("+919999999999", "123456", "register")
+
+
+def test_twilio_no_credential_leakage(caplog, monkeypatch):
+    kisanai_logger = logging.getLogger("KisanAI")
+    monkeypatch.setattr(kisanai_logger, "disabled", False)
+    caplog.set_level(logging.INFO)
+    provider = _twilio_provider(_FakeClient(500))
+
+    with pytest.raises(OtpProviderError) as exc:
+        provider.send("+919999999999", "123456", "register")
+
+    assert "Unable to send OTP" in str(exc.value)
+    assert _TEST_SID not in str(exc.value)
+    assert _TEST_TOKEN not in str(exc.value)
+    assert _TEST_MESSAGING_SID not in str(exc.value)
+    assert "123456" not in str(exc.value)
+    assert _TEST_SID not in caplog.text
+    assert _TEST_TOKEN not in caplog.text
+    assert _TEST_MESSAGING_SID not in caplog.text
+
+
+def test_mock_provider_makes_no_network_calls(caplog, monkeypatch):
+    kisanai_logger = logging.getLogger("KisanAI")
+    monkeypatch.setattr(kisanai_logger, "disabled", False)
+    caplog.set_level(logging.INFO)
+    provider = MockOtpProvider()
+
+    provider.send("+919999999999", "123456", "register")
+
+    assert "MOCK OTP" in caplog.text
+
+
+def test_factory_backward_compatible(monkeypatch):
+    monkeypatch.setattr(settings, "OTP_PROVIDER", "mock")
+    assert isinstance(get_otp_provider(), MockOtpProvider)
+
+    monkeypatch.setattr(settings, "OTP_PROVIDER", "console")
+    assert isinstance(get_otp_provider(), ConsoleOtpProvider)
+
+    monkeypatch.setattr(settings, "OTP_PROVIDER", "bogus")
+    assert isinstance(get_otp_provider(), ConsoleOtpProvider)

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/constants/app_strings.dart';
+import '../../core/errors/api_exception.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common_views.dart';
 import '../../dependencies.dart';
@@ -81,6 +82,8 @@ class _MyFarmScreenState extends State<MyFarmScreen> {
       village: draft.village,
       district: draft.district,
       state: draft.state,
+      block: draft.block,
+      country: draft.country,
       farmSize: draft.farmSize,
     );
     if (ok) _showMessage(AppStrings.farmUpdated);
@@ -192,13 +195,17 @@ class _CreateFarmFormState extends State<_CreateFarmForm> {
   final _fieldsKey = GlobalKey<_FarmFormFieldsState>();
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    FocusScope.of(context).unfocus();
     final fields = _fieldsKey.currentState!;
+    final fieldsValid = _formKey.currentState!.validate();
+    final locationsValid = fields.validateLocations();
+    if (!fieldsValid || !locationsValid) return;
+    FocusScope.of(context).unfocus();
     final ok = await widget.controller.createFarm(
       village: fields.village,
       district: fields.district,
       state: fields.state,
+      block: fields.block,
+      country: fields.country,
       farmSize: fields.farmSize,
     );
     if (ok) widget.onMessage(AppStrings.farmCreated);
@@ -323,10 +330,22 @@ class _FarmDetails extends StatelessWidget {
                   const SizedBox(height: 12),
                   _InfoRow(label: AppStrings.mobileLabel, value: farm.mobile),
                   _InfoRow(
-                      label: AppStrings.villageLabel, value: farm.village),
+                    label: AppStrings.villageLabel,
+                    value: farm.village,
+                  ),
+                  _InfoRow(
+                    label: AppStrings.tehsilLabel,
+                    value: (farm.block == null || farm.block!.isEmpty)
+                        ? '—'
+                        : farm.block!,
+                  ),
                   _InfoRow(
                       label: AppStrings.districtLabel, value: farm.district),
                   _InfoRow(label: AppStrings.stateLabel, value: farm.state),
+                  _InfoRow(
+                    label: AppStrings.countryLabel,
+                    value: farm.country ?? 'India',
+                  ),
                   _InfoRow(
                     label: AppStrings.farmSizeLabel,
                     value: farm.farmSize == null
@@ -443,6 +462,8 @@ class _FarmDraft {
     required this.village,
     required this.district,
     required this.state,
+    required this.block,
+    this.country,
     this.farmSize,
   });
 
@@ -450,12 +471,16 @@ class _FarmDraft {
         village: farm.village,
         district: farm.district,
         state: farm.state,
+        block: farm.block ?? '',
+        country: farm.country,
         farmSize: farm.farmSize,
       );
 
   final String village;
   final String district;
   final String state;
+  final String block;
+  final String? country;
   final double? farmSize;
 }
 
@@ -471,30 +496,96 @@ class _FarmFormFields extends StatefulWidget {
 class _FarmFormFieldsState extends State<_FarmFormFields> {
   late final TextEditingController _village =
       TextEditingController(text: widget.initial?.village ?? '');
-  late final TextEditingController _district =
-      TextEditingController(text: widget.initial?.district ?? '');
-  late final TextEditingController _state =
-      TextEditingController(text: widget.initial?.state ?? '');
   late final TextEditingController _farmSize = TextEditingController(
     text: widget.initial?.farmSize == null
         ? ''
         : _formatNumber(widget.initial!.farmSize!),
   );
 
-  String get village => _village.text.trim();
-  String get district => _district.text.trim();
-  String get state => _state.text.trim();
+  final List<String> _countries = [];
+  final List<String> _states = [];
+  List<String> _districts = [];
+  List<String> _blocks = [];
+  List<String> _villages = [];
+
+  String? _selectedCountry;
+  String? _selectedState;
+  String? _selectedDistrict;
+  String? _selectedBlock;
+  String? _selectedVillage;
+
+  bool _loadingCountries = true;
+  bool _loadingStates = false;
+  bool _loadingDistricts = false;
+  bool _loadingBlocks = false;
+  bool _loadingVillages = false;
+  bool _countriesFailed = false;
+  bool _statesFailed = false;
+  bool _districtsFailed = false;
+  bool _blocksFailed = false;
+  bool _villagesFailed = false;
+
+  String? _countryError;
+  String? _stateError;
+  String? _districtError;
+  String? _tehsilError;
+  String? _villageError;
+
+  bool _initialized = false;
+
+  AppDependencies get _deps => context.read<AppDependencies>();
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
+    _selectedCountry = _nonEmpty(widget.initial?.country);
+    _selectedState = _nonEmpty(widget.initial?.state);
+    _selectedDistrict = _nonEmpty(widget.initial?.district);
+    _selectedBlock = _nonEmpty(widget.initial?.block);
+    _loadingStates = _selectedCountry != null;
+    if (_selectedState != null) _loadingDistricts = true;
+    if (_selectedState != null && _selectedDistrict != null) {
+      _loadingBlocks = true;
+    }
+    _loadCountries();
+  }
+
+  String get village => _selectedVillage ?? _village.text.trim();
+  String get district => _selectedDistrict ?? '';
+  String get state => _selectedState ?? '';
+  String get block => _selectedBlock ?? '';
+  String get country => _selectedCountry ?? '';
+
   double? get farmSize {
     final text = _farmSize.text.trim();
     if (text.isEmpty) return null;
     return double.tryParse(text);
   }
 
+  /// Validates the cascading dropdowns (the `Form` only knows about the text
+  /// fields); returns true when country, state, district, tehsil and village
+  /// are all chosen.
+  bool validateLocations() {
+    setState(() {
+      _countryError = _selectedCountry == null ? AppStrings.countryRequired : null;
+      _stateError = _selectedState == null ? AppStrings.stateRequired : null;
+      _districtError =
+          _selectedDistrict == null ? AppStrings.districtRequired : null;
+      _tehsilError = _selectedBlock == null ? AppStrings.tehsilRequired : null;
+      _villageError = village.isEmpty ? AppStrings.villageRequired : null;
+    });
+    return _countryError == null &&
+        _stateError == null &&
+        _districtError == null &&
+        _tehsilError == null &&
+        _villageError == null;
+  }
+
   @override
   void dispose() {
     _village.dispose();
-    _district.dispose();
-    _state.dispose();
     _farmSize.dispose();
     super.dispose();
   }
@@ -507,46 +598,328 @@ class _FarmFormFieldsState extends State<_FarmFormFields> {
     return null;
   }
 
+  Future<void> _loadCountries() async {
+    setState(() {
+      _loadingCountries = true;
+      _countriesFailed = false;
+    });
+    try {
+      final countries = await _deps.locationApi.fetchCountries();
+      if (!mounted) return;
+      setState(() {
+        _countries
+          ..clear()
+          ..addAll(countries);
+        _loadingCountries = false;
+      });
+      if (_selectedCountry != null) await _loadStates();
+    } on ApiException {
+      if (!mounted) return;
+      setState(() {
+        _loadingCountries = false;
+        _countriesFailed = true;
+      });
+    }
+  }
+
+  Future<void> _loadStates() async {
+    setState(() {
+      _loadingStates = true;
+      _statesFailed = false;
+    });
+    try {
+      final states = await _deps.locationApi.fetchStates();
+      if (!mounted) return;
+      setState(() {
+        _states
+          ..clear()
+          ..addAll(states);
+        _loadingStates = false;
+      });
+      if (_selectedState != null) await _loadDistricts();
+    } on ApiException {
+      if (!mounted) return;
+      setState(() {
+        _loadingStates = false;
+        _statesFailed = true;
+      });
+    }
+  }
+
+  Future<void> _loadDistricts() async {
+    final state = _selectedState;
+    if (state == null) return;
+    setState(() {
+      _loadingDistricts = true;
+      _districtsFailed = false;
+    });
+    try {
+      final districts = await _deps.locationApi.fetchDistricts(state);
+      if (!mounted) return;
+      setState(() {
+        _districts
+          ..clear()
+          ..addAll(districts);
+        _loadingDistricts = false;
+      });
+      if (_selectedDistrict != null) await _loadBlocks();
+    } on ApiException {
+      if (!mounted) return;
+      setState(() {
+        _loadingDistricts = false;
+        _districtsFailed = true;
+      });
+    }
+  }
+
+  Future<void> _loadBlocks() async {
+    final district = _selectedDistrict;
+    if (district == null) return;
+    setState(() {
+      _loadingBlocks = true;
+      _blocksFailed = false;
+    });
+    try {
+      final blocks = await _deps.locationApi.fetchBlocks(district);
+      if (!mounted) return;
+      setState(() {
+        _blocks
+          ..clear()
+          ..addAll(blocks);
+        _loadingBlocks = false;
+      });
+      if (_selectedBlock != null) await _loadVillages();
+    } on ApiException {
+      if (!mounted) return;
+      setState(() {
+        _loadingBlocks = false;
+        _blocksFailed = true;
+      });
+    }
+  }
+
+  Future<void> _loadVillages() async {
+    final tehsil = _selectedBlock;
+    if (tehsil == null) return;
+    setState(() {
+      _loadingVillages = true;
+      _villagesFailed = false;
+    });
+    try {
+      final villages = await _deps.locationApi.fetchVillages(tehsil);
+      if (!mounted) return;
+      // Prefill the dropdown from a matching free-text village on edit.
+      String? match;
+      final typed = _village.text.trim();
+      if (typed.isNotEmpty && villages.contains(typed)) match = typed;
+      setState(() {
+        _villages
+          ..clear()
+          ..addAll(villages);
+        _loadingVillages = false;
+        if (match != null) {
+          _selectedVillage = match;
+          _village.clear();
+        }
+      });
+    } on ApiException {
+      if (!mounted) return;
+      setState(() {
+        _loadingVillages = false;
+        _villagesFailed = true;
+      });
+    }
+  }
+
+  void _selectCountry(String? country) {
+    setState(() {
+      _selectedCountry = country;
+      _selectedState = null;
+      _selectedDistrict = null;
+      _selectedBlock = null;
+      _selectedVillage = null;
+      _village.clear();
+      _states.clear();
+      _districts = [];
+      _blocks = [];
+      _villages = [];
+      _loadingStates = country != null;
+      _loadingDistricts = false;
+      _loadingBlocks = false;
+      _loadingVillages = false;
+      _statesFailed = false;
+      _districtsFailed = false;
+      _blocksFailed = false;
+      _villagesFailed = false;
+      _countryError = null;
+      _stateError = null;
+      _districtError = null;
+      _tehsilError = null;
+      _villageError = null;
+    });
+    if (country != null) _loadStates();
+  }
+
+  void _selectState(String? state) {
+    setState(() {
+      _selectedState = state;
+      _selectedDistrict = null;
+      _selectedBlock = null;
+      _selectedVillage = null;
+      _village.clear();
+      _districts = [];
+      _blocks = [];
+      _villages = [];
+      _loadingDistricts = state != null;
+      _loadingBlocks = false;
+      _loadingVillages = false;
+      _districtsFailed = false;
+      _blocksFailed = false;
+      _villagesFailed = false;
+      _stateError = null;
+      _districtError = null;
+      _tehsilError = null;
+      _villageError = null;
+    });
+    if (state != null) _loadDistricts();
+  }
+
+  void _selectDistrict(String? district) {
+    setState(() {
+      _selectedDistrict = district;
+      _selectedBlock = null;
+      _selectedVillage = null;
+      _village.clear();
+      _blocks = [];
+      _villages = [];
+      _loadingBlocks = district != null;
+      _loadingVillages = false;
+      _blocksFailed = false;
+      _villagesFailed = false;
+      _districtError = null;
+      _tehsilError = null;
+      _villageError = null;
+    });
+    if (district != null) _loadBlocks();
+  }
+
+  void _selectBlock(String? block) {
+    setState(() {
+      _selectedBlock = block;
+      _selectedVillage = null;
+      _village.clear();
+      _villages = [];
+      _loadingVillages = block != null;
+      _villagesFailed = false;
+      _tehsilError = null;
+      _villageError = null;
+    });
+    if (block != null) _loadVillages();
+  }
+
+  void _selectVillage(String? village) {
+    setState(() {
+      _selectedVillage = village;
+      _villageError = null;
+      _village.clear();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final showVillageDropdown =
+        _loadingVillages || _villagesFailed || _villages.isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TextFormField(
-          controller: _village,
-          textInputAction: TextInputAction.next,
-          decoration: const InputDecoration(
-            labelText: AppStrings.villageLabel,
-            prefixIcon: Icon(Icons.location_on_outlined),
+        if (_countriesFailed)
+          _LocationLoadError(onRetry: _loadCountries)
+        else
+          _LocationDropdown(
+            label: AppStrings.countryLabel,
+            icon: Icons.public,
+            placeholder: AppStrings.selectCountryHint,
+            options: _countries,
+            value: _selectedCountry,
+            loading: _loadingCountries,
+            onSelected: _selectCountry,
+            errorText: _countryError,
           ),
-          validator: (value) => (value == null || value.trim().isEmpty)
-              ? AppStrings.villageRequired
-              : null,
-        ),
         const SizedBox(height: 16),
-        TextFormField(
-          controller: _district,
-          textInputAction: TextInputAction.next,
-          decoration: const InputDecoration(
-            labelText: AppStrings.districtLabel,
-            prefixIcon: Icon(Icons.map_outlined),
+        if (_statesFailed)
+          _LocationLoadError(onRetry: _loadStates)
+        else
+          _LocationDropdown(
+            label: AppStrings.stateLabel,
+            icon: Icons.map_outlined,
+            placeholder: AppStrings.selectStateHint,
+            options: _states,
+            value: _selectedState,
+            enabled: _selectedCountry != null,
+            loading: _loadingStates,
+            onSelected: _selectState,
+            errorText: _stateError,
           ),
-          validator: (value) => (value == null || value.trim().isEmpty)
-              ? AppStrings.districtRequired
-              : null,
-        ),
         const SizedBox(height: 16),
-        TextFormField(
-          controller: _state,
-          textInputAction: TextInputAction.next,
-          decoration: const InputDecoration(
-            labelText: AppStrings.stateLabel,
-            prefixIcon: Icon(Icons.public),
+        if (_districtsFailed)
+          _LocationLoadError(onRetry: _loadDistricts)
+        else
+          _LocationDropdown(
+            label: AppStrings.districtLabel,
+            icon: Icons.map_outlined,
+            placeholder: AppStrings.selectDistrictHint,
+            options: _districts,
+            value: _selectedDistrict,
+            enabled: _selectedState != null,
+            loading: _loadingDistricts,
+            onSelected: _selectDistrict,
+            errorText: _districtError,
           ),
-          validator: (value) => (value == null || value.trim().isEmpty)
-              ? AppStrings.stateRequired
-              : null,
-        ),
+        const SizedBox(height: 16),
+        if (_blocksFailed)
+          _LocationLoadError(onRetry: _loadBlocks)
+        else
+          _LocationDropdown(
+            label: AppStrings.tehsilLabel,
+            icon: Icons.location_city_outlined,
+            placeholder: AppStrings.selectTehsilHint,
+            options: _blocks,
+            value: _selectedBlock,
+            enabled: _selectedDistrict != null,
+            loading: _loadingBlocks,
+            onSelected: _selectBlock,
+            errorText: _tehsilError,
+          ),
+        const SizedBox(height: 16),
+        if (showVillageDropdown)
+          if (_villagesFailed)
+            _LocationLoadError(onRetry: _loadVillages)
+          else
+            _LocationDropdown(
+              label: AppStrings.villageLabel,
+              icon: Icons.location_on_outlined,
+              placeholder: AppStrings.selectVillageHint,
+              options: _villages,
+              value: _selectedVillage,
+              enabled: _selectedBlock != null,
+              loading: _loadingVillages,
+              onSelected: _selectVillage,
+              errorText: _villageError,
+            )
+        else
+          TextFormField(
+            controller: _village,
+            enabled: _selectedBlock != null,
+            textInputAction: TextInputAction.next,
+            onChanged: (_) => setState(() => _villageError = null),
+            decoration: const InputDecoration(
+              labelText: AppStrings.villageLabel,
+              prefixIcon: Icon(Icons.location_on_outlined),
+            ),
+            validator: (value) => (value == null || value.trim().isEmpty)
+                ? AppStrings.villageRequired
+                : null,
+          ),
         const SizedBox(height: 16),
         TextFormField(
           controller: _farmSize,
@@ -558,6 +931,104 @@ class _FarmFormFieldsState extends State<_FarmFormFields> {
             prefixIcon: Icon(Icons.straighten),
           ),
           validator: _validateFarmSize,
+        ),
+      ],
+    );
+  }
+}
+
+String? _nonEmpty(String? value) {
+  if (value == null) return null;
+  final trimmed = value.trim();
+  return trimmed.isEmpty ? null : trimmed;
+}
+
+/// A labelled dropdown for one level of the location hierarchy.
+///
+/// Fully controlled: [value] only renders when present in [options] so a
+/// not-yet-loaded selection never causes a dropdown assertion, and it is
+/// disabled while loading, when disabled by a missing parent, or when there
+/// are no options to choose from.
+class _LocationDropdown extends StatelessWidget {
+  const _LocationDropdown({
+    required this.label,
+    required this.icon,
+    required this.placeholder,
+    required this.options,
+    required this.value,
+    required this.onSelected,
+    this.enabled = true,
+    this.loading = false,
+    this.errorText,
+  });
+
+  final String label;
+  final IconData icon;
+  final String placeholder;
+  final List<String> options;
+  final String? value;
+  final bool enabled;
+  final bool loading;
+  final ValueChanged<String?> onSelected;
+  final String? errorText;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDisabled = !enabled || loading || options.isEmpty;
+    final hint = !enabled
+        ? placeholder
+        : (loading
+            ? AppStrings.loading
+            : (options.isEmpty ? AppStrings.noOptionsAvailable : placeholder));
+    return InputDecorator(
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        errorText: errorText,
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: options.contains(value) ? value : null,
+          isExpanded: true,
+          hint: Text(hint),
+          items: [
+            for (final option in options)
+              DropdownMenuItem(value: option, child: Text(option)),
+          ],
+          onChanged:
+              isDisabled ? null : (selected) => onSelected(selected),
+        ),
+      ),
+    );
+  }
+}
+
+/// Inline error + retry shown when one level of the location hierarchy fails
+/// to load.
+class _LocationLoadError extends StatelessWidget {
+  const _LocationLoadError({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          AppStrings.locationsLoadError,
+          style: theme.textTheme.bodyMedium
+              ?.copyWith(color: theme.colorScheme.error),
+        ),
+        const SizedBox(height: 4),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh),
+            label: const Text(AppStrings.retry),
+          ),
         ),
       ],
     );
@@ -592,13 +1063,17 @@ class _FarmFormSheetState extends State<_FarmFormSheet> {
   final _fieldsKey = GlobalKey<_FarmFormFieldsState>();
 
   void _save() {
-    if (!_formKey.currentState!.validate()) return;
     final fields = _fieldsKey.currentState!;
+    final fieldsValid = _formKey.currentState!.validate();
+    final locationsValid = fields.validateLocations();
+    if (!fieldsValid || !locationsValid) return;
     Navigator.of(context).pop(
       _FarmDraft(
         village: fields.village,
         district: fields.district,
         state: fields.state,
+        block: fields.block,
+        country: fields.country,
         farmSize: fields.farmSize,
       ),
     );

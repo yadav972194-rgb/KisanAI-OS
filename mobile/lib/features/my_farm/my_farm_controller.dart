@@ -50,6 +50,8 @@ class MyFarmController extends ChangeNotifier {
     required String village,
     required String district,
     required String state,
+    String? block,
+    String? country,
     double? farmSize,
   }) {
     return _save(
@@ -57,6 +59,8 @@ class MyFarmController extends ChangeNotifier {
         village: village,
         district: district,
         state: state,
+        block: block,
+        country: country,
         farmSize: farmSize,
       ),
       reload: true,
@@ -67,6 +71,8 @@ class MyFarmController extends ChangeNotifier {
     required String village,
     required String district,
     required String state,
+    String? block,
+    String? country,
     double? farmSize,
   }) {
     return _save(
@@ -74,6 +80,8 @@ class MyFarmController extends ChangeNotifier {
         village: village,
         district: district,
         state: state,
+        block: block,
+        country: country,
         farmSize: farmSize,
       ),
       reload: true,

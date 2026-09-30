@@ -1,0 +1,25 @@
+﻿{
+  "$schema": "https://opencode.ai/config.json",
+
+  "default_agent": "kisan-builder",
+
+  "agent": {
+    "kisan-builder": {
+      "description": "KisanAI-OS main development agent. Builds features, writes code, fixes implementation issues, and runs development commands.",
+      "mode": "primary",
+      "model": "opencode/deepseek-v4-flash-free"
+    },
+
+    "kisan-architect": {
+      "description": "KisanAI-OS architecture and planning agent. Designs modules, reviews structure, plans implementation, and protects the overall system architecture.",
+      "mode": "primary",
+      "model": "opencode/nemotron-3-ultra-free"
+    },
+
+    "kisan-tester": {
+      "description": "KisanAI-OS testing and debugging agent. Runs tests, finds bugs, performs regression checks, and verifies fixes.",
+      "mode": "primary",
+      "model": "opencode/nemotron-3.5-lightning-free"
+    }
+  }
+}

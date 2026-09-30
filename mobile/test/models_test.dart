@@ -89,14 +89,16 @@ void main() {
       expect(soil.potassium, 40);
     });
 
-    test('Farmer.fromJson with nested crops', () {
+    test('Farmer.fromJson with nested crops, block and country', () {
       final farmer = Farmer.fromJson({
         'farmer_id': 4,
         'name': 'Sita',
         'mobile': '9812345678',
         'village': 'Ramnagar',
+        'block': 'Hathin',
         'district': 'Palwal',
         'state': 'Haryana',
+        'country': 'India',
         'created_at': 'x',
         'crops': [
           {
@@ -110,8 +112,26 @@ void main() {
         ],
       });
       expect(farmer.farmerId, 4);
+      expect(farmer.block, 'Hathin');
+      expect(farmer.country, 'India');
       expect(farmer.crops, hasLength(1));
       expect(farmer.crops.first.cropName, 'सरसों');
+      expect(farmer.locationSummary, 'Ramnagar, Hathin, Palwal');
+    });
+
+    test('Farmer.fromJson tolerates a missing block and country', () {
+      final farmer = Farmer.fromJson({
+        'farmer_id': 5,
+        'name': 'Ram',
+        'mobile': '9812345678',
+        'village': 'Ramnagar',
+        'district': 'Palwal',
+        'state': 'Haryana',
+        'created_at': 'x',
+        'crops': <Object?>[],
+      });
+      expect(farmer.block, isNull);
+      expect(farmer.country, isNull);
       expect(farmer.locationSummary, 'Ramnagar, Palwal');
     });
 

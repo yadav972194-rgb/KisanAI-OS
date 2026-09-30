@@ -13,6 +13,7 @@ from config.core.data.india_locations import (
     STATES,
     STATES_DISTRICTS,
     DISTRICT_BLOCKS,
+    TEHSIL_VILLAGES,
 )
 
 
@@ -67,3 +68,14 @@ def get_blocks(district: str = Query(..., description="District name")):
         # Fallback: return the district name so the UI always has an option.
         return [district]
     return blocks
+
+
+@router.get("/villages", response_model=list[str])
+def get_villages(tehsil: str = Query(..., description="Tehsil/block name"),
+                 ):
+    """Return the curated real villages for the given tehsil/block.
+
+    Tehsils without a curated village list return an empty list; the mobile
+    UI falls back to free-text गाँव entry in that case (no fake lists).
+    """
+    return TEHSIL_VILLAGES.get(tehsil, [])

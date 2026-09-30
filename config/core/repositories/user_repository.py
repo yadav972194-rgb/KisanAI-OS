@@ -49,6 +49,21 @@ class UserRepository:
     def update(self, user: User):
         self._commit()
 
+    def delete(self, user_id):
+        """Delete a user account (admin module, confirmation required)."""
+        user = self.session.get(User, user_id)
+        if user is not None:
+            self.session.delete(user)
+            self._commit()
+
+    def count_active_super_admins(self):
+        """Number of active accounts with the super-admin flag."""
+        statement = (
+            select(func.count(User.id))
+            .where(User.super_admin.is_(True), User.is_active.is_(True))
+        )
+        return self.session.scalar(statement) or 0
+
     def count_users(self):
         statement = select(func.count(User.id))
         return self.session.scalar(statement) or 0

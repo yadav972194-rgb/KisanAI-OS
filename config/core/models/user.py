@@ -30,6 +30,13 @@ class User(Base):
     mobile: Mapped[str] = mapped_column(String(15))
     role: Mapped[str] = mapped_column(String(20), default="farmer")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Additive admin escalation flag (Admin Control & Farmer Support module).
+    # True = super-admin capabilities (delete, member management). Defaults
+    # to False for every account; assigned only by an existing super-admin
+    # or during bootstrap, never through the public register endpoint.
+    super_admin: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="0"
+    )
     # True once the mobile number has been verified through OTP. Existing
     # accounts keep False until the farmer verifies their number; this is
     # a purely additive flag and never blocks legacy logins.

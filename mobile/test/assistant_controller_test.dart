@@ -75,6 +75,19 @@ void main() {
       expect(controller.response, isNull);
     });
 
+    test('ask records the submitted text as the last user message', () async {
+      final (controller, _) = build(FakeBackend());
+      await controller.ask('मेरी फसल के क्या हाल हैं?');
+      expect(controller.lastUserMessage, 'मेरी फसल के क्या हाल हैं?');
+    });
+
+    test('an empty question does not replace the last user message', () async {
+      final (controller, _) = build(FakeBackend());
+      await controller.ask('मेरी फसल के क्या हाल हैं?');
+      await controller.ask('   ');
+      expect(controller.lastUserMessage, 'मेरी फसल के क्या हाल हैं?');
+    });
+
     test('network failure surfaces connection error', () async {
       final controller = AssistantController(
         _ThrowingAssistantApi(

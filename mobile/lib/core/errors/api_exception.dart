@@ -3,8 +3,11 @@
 class ApiErrorCode {
   ApiErrorCode._();
 
-  /// Request never reached the server (no connection / timeout).
+  /// Request never reached the server (no connection / DNS).
   static const String network = 'NETWORK_ERROR';
+
+  /// The request timed out before a response arrived.
+  static const String timeout = 'TIMEOUT';
 
   /// Credentials were rejected (login / OTP).
   static const String authInvalid = 'AUTH_INVALID';

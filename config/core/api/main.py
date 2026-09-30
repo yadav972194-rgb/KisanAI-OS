@@ -17,6 +17,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from config.constants import ROLE_ADMIN
 from config.core.api.auth import get_current_user, require_role
+from config.core.api.admin_routes import router as admin_router
 from config.core.controllers.advisory_controller import AdvisoryController
 from config.core.controllers.assistant_controller import AssistantController
 from config.core.controllers.farmer_controller import FarmerController
@@ -162,6 +163,9 @@ if _origins:
     )
 
 app.include_router(auth_router)
+
+# Admin Control & Farmer Support module (role-guarded, audit-backed).
+app.include_router(admin_router)
 
 # Location hierarchy: Country -> State -> District -> Block/Tehsil -> Village
 app.include_router(location_router)

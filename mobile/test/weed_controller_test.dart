@@ -89,6 +89,21 @@ void main() {
       expect(controller.state, DetectionState.error);
       expect(controller.errorMessage, contains('नेटवर्क'));
     });
+
+    test('backend route missing maps to a friendly Hindi message', () async {
+      final controller = WeedController(
+        _NotFoundWeedApi(ApiClient(
+          baseUrl: 'http://test.local',
+          httpClient: FakeBackend().client(),
+        )),
+        () async => _leaf,
+      );
+      await controller.selectImage();
+      await controller.detect();
+      expect(controller.state, DetectionState.error);
+      expect(controller.errorMessage, isNot(contains('Not Found')));
+      expect(controller.errorMessage, contains('उपलब्ध'));
+    });
   });
 }
 
@@ -102,5 +117,22 @@ class _ThrowingWeedApi extends WeedDetectionApi {
     String? cropName,
   }) async {
     throw ApiException('', isNetwork: true);
+  }
+}
+
+class _NotFoundWeedApi extends WeedDetectionApi {
+  _NotFoundWeedApi(super.client);
+
+  @override
+  Future<WeedDetectionResult> detect({
+    required List<int> imageBytes,
+    required String imageName,
+    String? cropName,
+  }) async {
+    throw ApiException(
+      'Not Found',
+      statusCode: 404,
+      code: ApiErrorCode.notFound,
+    );
   }
 }

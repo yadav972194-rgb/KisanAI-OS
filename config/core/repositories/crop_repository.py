@@ -54,6 +54,23 @@ class CropRepository:
         )
         return self.session.scalars(statement).all()
 
+    def count_by_farmer(self, farmer_id):
+        """Admin-scoped helper: crop count for a farmer record."""
+        statement = (
+            select(func.count(Crop.crop_id))
+            .where(Crop.farmer_id == farmer_id)
+        )
+        return self.session.scalar(statement) or 0
+
+    def delete_all_by_farmer(self, farmer_id):
+        """Admin-scoped helper: remove every crop owned by a farmer
+        (used during confirmed farmer-record deletion)."""
+        crops = self.get_crops_by_farmer(farmer_id)
+        for crop in crops:
+            self.session.delete(crop)
+        if crops:
+            self._commit()
+
     def update_crop(self, crop: Crop):
         self.session.merge(crop)
         self._commit()

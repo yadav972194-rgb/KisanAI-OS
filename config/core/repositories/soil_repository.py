@@ -30,6 +30,32 @@ class SoilRepository:
     def get_soil_by_id(self, soil_id):
         return self.session.get(Soil, soil_id)
 
+    def get_soils_by_farmer(self, farmer_id):
+        """Admin-scoped helper: soils belonging to a farmer record."""
+        statement = (
+            select(Soil)
+            .where(Soil.farmer_id == farmer_id)
+            .order_by(Soil.soil_id)
+        )
+        return list(self.session.scalars(statement))
+
+    def count_by_farmer(self, farmer_id):
+        """Admin-scoped helper: soil count for a farmer record."""
+        statement = (
+            select(func.count(Soil.soil_id))
+            .where(Soil.farmer_id == farmer_id)
+        )
+        return self.session.scalar(statement) or 0
+
+    def delete_all_by_farmer(self, farmer_id):
+        """Admin-scoped helper: remove every soil owned by a farmer
+        (used during confirmed farmer-record deletion)."""
+        soils = self.get_soils_by_farmer(farmer_id)
+        for soil in soils:
+            self.session.delete(soil)
+        if soils:
+            self._commit()
+
     def get_all_soils(self):
         statement = select(Soil).order_by(Soil.soil_id)
         return self.session.scalars(statement).all()

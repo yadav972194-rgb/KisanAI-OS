@@ -8,6 +8,7 @@ import 'core/voice/voice_service.dart';
 import 'features/auth/auth_controller.dart';
 import 'features/auth/forgot_password_controller.dart';
 import 'features/assistant/assistant_controller.dart';
+import 'features/admin_admin/admin_controller.dart';
 import 'features/diagnosis/diagnosis_controller.dart';
 import 'features/detection/growth_stage_controller.dart';
 import 'features/detection/nutrient_deficiency_controller.dart';
@@ -15,6 +16,7 @@ import 'features/detection/pest_controller.dart';
 import 'features/detection/water_stress_controller.dart';
 import 'features/detection/weed_controller.dart';
 import 'features/my_farm/my_farm_controller.dart';
+import 'features/predictions/predictions_controller.dart';
 import 'features/recommendations/recommendations_controller.dart';
 import 'features/weather/weather_controller.dart';
 import 'models/crop.dart';
@@ -31,11 +33,14 @@ import 'services/growth_stage_api.dart';
 import 'services/my_farm_api.dart';
 import 'services/nutrient_deficiency_api.dart';
 import 'services/pest_detection_api.dart';
+import 'services/predictions_api.dart';
 import 'services/recommendations_api.dart';
 import 'services/soils_api.dart';
 import 'services/water_stress_api.dart';
 import 'services/weather_api.dart';
 import 'services/weed_detection_api.dart';
+import 'services/location_api.dart';
+import 'services/admin_api.dart';
 
 /// Composition root for the app.
 ///
@@ -71,9 +76,12 @@ class AppDependencies {
   late final GrowthStageApi growthStageApi = GrowthStageApi(apiClient);
   late final WaterStressApi waterStressApi = WaterStressApi(apiClient);
   late final MyFarmApi myFarmApi = MyFarmApi(apiClient);
+  late final LocationApi locationApi = LocationApi(apiClient);
   late final RecommendationsApi recommendationsApi =
       RecommendationsApi(apiClient);
+  late final PredictionsApi predictionsApi = PredictionsApi(apiClient);
   late final AssistantApi assistantApi = AssistantApi(apiClient);
+  late final AdminApi adminApi = AdminApi(apiClient);
 
   late final ImagePickerFn imagePicker = pickImageFromGallery;
 
@@ -103,8 +111,11 @@ class AppDependencies {
       WaterStressController(waterStressApi, imagePicker);
   late final RecommendationsController recommendationsController =
       RecommendationsController(recommendationsApi);
+  late final PredictionsController predictionsController =
+      PredictionsController(predictionsApi);
   late final VoiceService voiceService = VoiceService()..initialize();
   late final AssistantController assistantController =
       AssistantController(assistantApi, voiceService: voiceService);
   late final MyFarmController myFarmController = MyFarmController(myFarmApi);
+  late final AdminController adminController = AdminController(adminApi);
 }

@@ -62,7 +62,9 @@ class DetectionController<R> extends ChangeNotifier {
       );
       state = DetectionState.success;
     } on ApiException catch (e) {
-      errorMessage = errorMessageFor(e);
+      errorMessage = e.code == ApiErrorCode.notFound
+          ? AppStrings.detectionUnavailable
+          : errorMessageFor(e);
       state = DetectionState.error;
     } catch (_) {
       errorMessage = AppStrings.genericError;

@@ -247,6 +247,29 @@ DISTRICT_BLOCKS: dict[str, list[str]] = {
     "default": [],
 }
 
+#: Mapping of each tehsil/block name to its (curated) list of real villages.
+#: Keyed by the exact tehsil name the blocks endpoint returns, so the mobile
+#: UI can cascade भारत -> राज्य -> जिला -> तहसील -> गाँव. This is a real,
+#: curated subset of villages (no invented names); tehsils not listed here
+#: simply return an empty list and the mobile UI falls back to free-text
+#: गाँव entry (the same documented fallback used for districts/tehsils).
+TEHSIL_VILLAGES: dict[str, list[str]] = {
+    "Jaipur Tehsil": ["Amer", "Sanganer", "Bagru", "Chaksu", "Chomu", "Phulera"],
+    "Jodhpur Tehsil": ["Osian"],
+    "Agra Tehsil": ["Barauli Ahir", "Etmadpur", "Fatehabad"],
+    "Amritsar Tehsil": ["Raja Sansi", "Majitha", "Verka"],
+    "Guntur Tehsil": ["Amaravati", "Mangalagiri"],
+    "Lucknow Tehsil": ["Malihabad", "Kakori", "Mohanlalganj", "Bakshi Ka Talab"],
+    "Madurai Tehsil": ["Alanganallur", "Melur", "Vadipatti"],
+    "Patna Tehsil": ["Maner", "Naubatpur", "Fatuha"],
+    "Pune Tehsil": ["Uruli Kanchan", "Lonikand", "Wagholi", "Theur"],
+    "Varanasi Tehsil": ["Sarnath", "Rajatalab", "Katesar"],
+    # Fallback tehsils (district name used as the tehsil) with real villages.
+    "Ajmer": ["Pushkar"],
+    "Chhatarpur": ["Khajuraho"],
+    "Mathura": ["Vrindavan"],
+}
+
 #: Country list (currently India only; extensible).
 COUNTRIES: list[str] = ["India"]
 

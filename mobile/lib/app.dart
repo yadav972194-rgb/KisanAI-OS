@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'core/constants/app_strings.dart';
 import 'core/theme/app_theme.dart';
+import 'core/voice/voice_service.dart';
 import 'dependencies.dart';
 import 'features/auth/auth_controller.dart';
 import 'features/auth/forgot_password_controller.dart';
@@ -15,6 +16,7 @@ import 'features/detection/pest_controller.dart';
 import 'features/detection/water_stress_controller.dart';
 import 'features/detection/weed_controller.dart';
 import 'features/home/home_screen.dart';
+import 'features/predictions/predictions_controller.dart';
 import 'features/recommendations/recommendations_controller.dart';
 import 'features/splash/splash_screen.dart';
 import 'features/weather/weather_controller.dart';
@@ -60,8 +62,14 @@ class KisanApp extends StatelessWidget {
         ChangeNotifierProvider<RecommendationsController>.value(
           value: dependencies.recommendationsController,
         ),
+        ChangeNotifierProvider<PredictionsController>.value(
+          value: dependencies.predictionsController,
+        ),
         ChangeNotifierProvider<AssistantController>.value(
           value: dependencies.assistantController,
+        ),
+        ChangeNotifierProvider<VoiceService>.value(
+          value: dependencies.voiceService,
         ),
       ],
       child: MaterialApp(

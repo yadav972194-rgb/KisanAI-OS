@@ -350,6 +350,14 @@ class Settings(BaseSettings):
         explicit DATABASE_URL. Never auto-generate secrets here - a
         boot-time error is the safe outcome.
         """
+        # The production release must always resolve to DEBUG=false:
+        # debug introspection (API docs) and dev reload are development-only
+        # conveniences. Derive DEBUG from APP_MODE so a production
+        # deployment can never run with DEBUG=true by accident, while a pure
+        # development mode keeps the explicit DEBUG value (default true).
+        if self.APP_MODE.strip().lower() == "production":
+            self.DEBUG = False
+
         is_production = (
             self.APP_MODE.strip().lower() == "production" or not self.DEBUG
         )

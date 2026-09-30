@@ -72,6 +72,29 @@ from config.core.schemas.user import (
     UserOut,
     UserRoleUpdate,
 )
+from config.core.schemas.support import (
+    ContactCreate,
+    ContactListOut,
+    ContactOut,
+    FeedbackCreate,
+    FeedbackListOut,
+    FeedbackOut,
+    FeedbackStatusUpdate,
+    FeedbackUpdate,
+)
+from config.core.schemas.admin import (
+    AdminMeOut,
+    AuditListOut,
+    AuditOut,
+    DeletePreviewOut,
+    FarmerListOut,
+    FarmerProfileOut,
+    FarmerSearchParams,
+    NotificationCreate,
+    NotificationListOut,
+    NotificationOut,
+    SuperAdminRoleUpdate,
+)
 
 __all__ = [
     "ApiResponse",
@@ -123,4 +146,23 @@ __all__ = [
     "UsernameOut",
     "ForgotUsernameRequest",
     "ResetPasswordRequest",
+    "ContactCreate",
+    "ContactListOut",
+    "ContactOut",
+    "FeedbackCreate",
+    "FeedbackListOut",
+    "FeedbackOut",
+    "FeedbackStatusUpdate",
+    "FeedbackUpdate",
+    "AdminMeOut",
+    "AuditListOut",
+    "AuditOut",
+    "DeletePreviewOut",
+    "FarmerListOut",
+    "FarmerProfileOut",
+    "FarmerSearchParams",
+    "NotificationCreate",
+    "NotificationListOut",
+    "NotificationOut",
+    "SuperAdminRoleUpdate",
 ]

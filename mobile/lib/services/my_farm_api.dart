@@ -31,6 +31,8 @@ class MyFarmApi {
     required String village,
     required String district,
     required String state,
+    String? block,
+    String? country,
     double? farmSize,
   }) {
     return _client.postJson(
@@ -39,6 +41,8 @@ class MyFarmApi {
         'village': village,
         'district': district,
         'state': state,
+        'block': ?block,
+        'country': ?country,
         'farm_size': ?farmSize,
       },
       _message,
@@ -49,6 +53,8 @@ class MyFarmApi {
     String? village,
     String? district,
     String? state,
+    String? block,
+    String? country,
     double? farmSize,
   }) {
     return _client.putJson(
@@ -57,6 +63,8 @@ class MyFarmApi {
         'village': ?village,
         'district': ?district,
         'state': ?state,
+        'block': ?block,
+        'country': ?country,
         'farm_size': ?farmSize,
       },
       _message,

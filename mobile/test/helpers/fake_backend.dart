@@ -40,11 +40,36 @@ class FakeBackend {
     this.detectStatus = 'MODEL_NOT_CONFIGURED',
     this.detectionStatuses = const {},
     this.recommendationStatus = 'RECOMMENDATION_AVAILABLE',
+    this.predictionStatus = 'MODEL_NOT_CONFIGURED',
     this.failWeather = false,
     this.failLogin = false,
     this.failMyFarm = false,
+    this.failLocations = false,
     this.failLogout = false,
+    this.failAdmin = false,
+    this.adminSuperAdmin = true,
     this.existingUsernames = const {'ravi'},
+    this.statesList = const ['Madhya Pradesh', 'Rajasthan', 'Uttar Pradesh'],
+    this.countriesList = const ['India'],
+    this.districtsByState = const {
+      'Madhya Pradesh': ['Bhopal', 'Chhindwara', 'Narsinghpur', 'Sehore'],
+      'Rajasthan': ['Jaipur', 'Jodhpur'],
+      'Uttar Pradesh': ['Agra', 'Aligarh', 'Lucknow', 'Varanasi'],
+    },
+    this.blocksByDistrict = const {
+      'Jaipur': ['Jaipur Tehsil'],
+      'Jodhpur': ['Jodhpur Tehsil'],
+      'Agra': ['Agra Tehsil'],
+      'Aligarh': ['Aligarh Tehsil'],
+      'Lucknow': ['Lucknow Tehsil'],
+      'Varanasi': ['Varanasi Tehsil'],
+    },
+    this.villagesByTehsil = const {
+      'Jaipur Tehsil': ['Amer', 'Sanganer', 'Bagru', 'Chaksu', 'Chomu', 'Phulera'],
+      'Agra Tehsil': ['Barauli Ahir', 'Etmadpur', 'Fatehabad'],
+      'Lucknow Tehsil': ['Malihabad', 'Kakori', 'Mohanlalganj'],
+      'Varanasi Tehsil': ['Sarnath', 'Rajatalab', 'Katesar'],
+    },
   });
 
   final String validPassword;
@@ -55,18 +80,109 @@ class FakeBackend {
   /// [detectStatus] when a path is not present.
   Map<String, String> detectionStatuses;
   String recommendationStatus;
+  String predictionStatus;
   bool failWeather;
   bool failLogin;
   bool failMyFarm;
+  bool failLocations;
   bool failLogout;
+  bool failAdmin;
+  bool adminSuperAdmin;
   final Set<String> existingUsernames;
   int logoutCalls = 0;
   int weatherCalls = 0;
+
+  /// Mirror of `/api/locations` contract (real data is English names).
+  final List<String> statesList;
+  final List<String> countriesList;
+  final Map<String, List<String>> districtsByState;
+  final Map<String, List<String>> blocksByDistrict;
+  final Map<String, List<String>> villagesByTehsil;
 
   /// In-memory state for `/api/my-farm` (mirrors the real farm table).
   Map<String, dynamic>? myFarm;
   final List<Map<String, dynamic>> myCrops = [];
   int _nextCropId = 1;
+
+  /// In-memory state for `/api/admin/*` (mirrors the real support module).
+  Map<String, dynamic> adminFarmer = {
+    'farmer_id': 1,
+    'user_id': 1,
+    'name': 'Ravi Kumar',
+    'mobile': '9876543210',
+    'village': 'Sanganer',
+    'block': 'Jaipur Tehsil',
+    'district': 'Jaipur',
+    'state': 'Rajasthan',
+    'country': 'India',
+    'farm_size': 2.5,
+    'created_at': '2026-08-11T00:00:00',
+    'crops': <Map<String, dynamic>>[
+      {
+        'crop_id': 1,
+        'farmer_id': 1,
+        'crop_name': 'गेहूं',
+        'season': 'रबी',
+        'duration_days': 120,
+        'water_requirement': 'मध्यम',
+        'created_at': '2026-08-11T00:00:00',
+      },
+    ],
+  };
+  final List<Map<String, dynamic>> adminSoils = [
+    {
+      'soil_id': 1,
+      'farmer_id': 1,
+      'soil_type': 'काली',
+      'ph': 6.5,
+      'moisture': 30.0,
+      'nitrogen': 120,
+      'phosphorus': 40,
+      'potassium': 160,
+      'created_at': '2026-08-11T00:00:00',
+    },
+  ];
+  List<Map<String, dynamic>> adminContacts = [];
+  final List<Map<String, dynamic>> adminFeedback = [
+    {
+      'feedback_id': 1,
+      'user_id': 1,
+      'farmer_id': 1,
+      'subject': 'सिंचाई समस्या',
+      'description': 'पानी की कमी',
+      'status': 'new',
+      'priority': 'high',
+      'created_at': '2026-08-12T00:00:00',
+      'updated_at': null,
+    },
+  ];
+  final List<Map<String, dynamic>> adminNotifications = [
+    {
+      'notification_id': 1,
+      'user_id': 1,
+      'farmer_id': 1,
+      'category': 'ALERT',
+      'title': 'मौसम चेतावनी',
+      'message': 'कल भारी बारिश',
+      'status': 'pending',
+      'created_by': 1,
+      'created_at': '2026-08-12T00:00:00',
+      'delivered_at': null,
+    },
+  ];
+  final List<Map<String, dynamic>> adminAudit = [
+    {
+      'audit_id': 1,
+      'actor_user_id': 1,
+      'action': 'farmer.update',
+      'entity_type': 'farmer',
+      'entity_id': 1,
+      'details': {'mobile': '9876543210'},
+      'created_at': '2026-08-12T00:00:00',
+    },
+  ];
+  int _nextContactId = 1;
+  int _nextFeedbackId = 2;
 
   MockClient client() => MockClient((request) async {
         if (failLogin) {
@@ -254,17 +370,67 @@ class FakeBackend {
               'missing': [],
               'message': '',
             });
+          case '/api/predictions':
+            return _predictionResponse(request);
           case '/api/my-farm':
             return _myFarm(request);
           case '/api/my-farm/crops':
             return _myFarmCrops(request);
+          case '/api/locations/countries':
+            if (failLocations) {
+              throw http.ClientException('connection refused');
+            }
+            return jsonResponse(countriesList);
+          case '/api/locations/states':
+            if (failLocations) {
+              throw http.ClientException('connection refused');
+            }
+            return jsonResponse(statesList);
+          case '/api/locations/districts':
+            if (failLocations) {
+              throw http.ClientException('connection refused');
+            }
+            final state = request.url.queryParameters['state'] ?? '';
+            return jsonResponse(districtsByState[state] ??
+                const ['District 1', 'District 2', 'District 3']);
+          case '/api/locations/blocks':
+            if (failLocations) {
+              throw http.ClientException('connection refused');
+            }
+            final district = request.url.queryParameters['district'] ?? '';
+            return jsonResponse(blocksByDistrict[district] ?? [district]);
+          case '/api/locations/villages':
+            if (failLocations) {
+              throw http.ClientException('connection refused');
+            }
+            final tehsil = request.url.queryParameters['tehsil'] ?? '';
+            return jsonResponse(villagesByTehsil[tehsil] ?? const []);
           default:
             if (path.startsWith('/api/my-farm/crops/')) {
               return _myFarmCropById(request);
             }
+            if (path.startsWith('/api/admin')) {
+              return _admin(request);
+            }
             return jsonResponse({'message': 'not found'}, status: 404);
         }
       });
+
+  http.Response _predictionResponse(http.Request request) {
+    final data = jsonDecode(request.body) as Map<String, dynamic>;
+    final configured = predictionStatus != 'MODEL_NOT_CONFIGURED';
+    return jsonResponse({
+      'success': true,
+      'status': predictionStatus,
+      'prediction_type': data['prediction_type'] ?? 'crop_yield',
+      'result': configured ? {'yield_tons_per_hectare': 4.2} : null,
+      'confidence': configured ? 0.88 : null,
+      'model': configured ? 'fake-yield-1.0' : null,
+      'metadata': configured ? {'samples': 1200} : null,
+      'message':
+          configured ? 'ok' : 'Prediction model is not configured',
+    });
+  }
 
   http.Response _myFarm(http.Request request) {
     if (failMyFarm) {
@@ -293,8 +459,10 @@ class FakeBackend {
           'name': defaultUser['full_name'],
           'mobile': defaultUser['mobile'],
           'village': data['village'],
+          'block': data['block'],
           'district': data['district'],
           'state': data['state'],
+          'country': data['country'] ?? 'India',
           'farm_size': data['farm_size'],
           'created_at': '2026-08-11T00:00:00',
           'crops': <Map<String, dynamic>>[],
@@ -309,8 +477,12 @@ class FakeBackend {
         }
         final data = jsonDecode(request.body) as Map<String, dynamic>;
         if (data.containsKey('village')) myFarm!['village'] = data['village'];
+        if (data.containsKey('block')) myFarm!['block'] = data['block'];
         if (data.containsKey('district')) myFarm!['district'] = data['district'];
         if (data.containsKey('state')) myFarm!['state'] = data['state'];
+        if (data.containsKey('country')) {
+          myFarm!['country'] = data['country'];
+        }
         if (data.containsKey('farm_size')) {
           myFarm!['farm_size'] = data['farm_size'];
         }
@@ -419,6 +591,273 @@ class FakeBackend {
         }
         myCrops.removeAt(index);
         return jsonResponse({'success': true, 'message': 'Crop Deleted Successfully'});
+      default:
+        return jsonResponse({'message': 'not found'}, status: 404);
+    }
+  }
+
+  http.Response _admin(http.Request request) {
+    if (failAdmin) {
+      throw http.ClientException('connection refused');
+    }
+    final path = request.url.path;
+    final segments = request.url.pathSegments;
+    if (path == '/api/admin/me') {
+      return jsonResponse({
+        'id': 1,
+        'username': 'admin',
+        'role': 'admin',
+        'super_admin': adminSuperAdmin,
+      });
+    }
+    if (path == '/api/admin/farmers') {
+      final q = (request.url.queryParameters['q'] ?? '').toLowerCase();
+      final farmer = adminFarmer;
+      final name = (farmer['name'] as String).toLowerCase();
+      final village = (farmer['village'] as String).toLowerCase();
+      final hits =
+          q.isEmpty || name.contains(q) || village.contains(q);
+      final list = hits ? [adminFarmer] : const <Map<String, dynamic>>[];
+      return jsonResponse({
+        'items': list,
+        'total': list.length,
+        'page': 1,
+        'size': list.length,
+      });
+    }
+    if (path.startsWith('/api/admin/farmers/')) {
+      return _adminFarmer(request, segments);
+    }
+    if (path == '/api/admin/problems') {
+      return _adminProblems(request);
+    }
+    if (path.startsWith('/api/admin/problems/')) {
+      return _adminProblemById(request, segments);
+    }
+    if (path == '/api/admin/notifications') {
+      return _adminNotifications(request);
+    }
+    if (path.startsWith('/api/admin/notifications/')) {
+      return _adminNotificationById(request, segments[3]);
+    }
+    if (path == '/api/admin/audit') {
+      return jsonResponse({
+        'items': adminAudit,
+        'total': adminAudit.length,
+        'page': 1,
+        'size': adminAudit.length,
+      });
+    }
+    if (path.startsWith('/api/admin/users/')) {
+      return _adminUser(request, segments);
+    }
+    return jsonResponse({'message': 'not found'}, status: 404);
+  }
+
+  http.Response _adminFarmer(http.Request request, List<String> segments) {
+    final id = int.tryParse(segments[3]) ?? -1;
+    final action = segments.length > 4 ? segments[4] : null;
+    switch (request.method) {
+      case 'GET':
+        if (action == null) {
+          return jsonResponse({
+            'farmer': adminFarmer,
+            'soils': adminSoils,
+            'contacts': adminContacts,
+            'feedback': adminFeedback
+                .where((f) => f['farmer_id'] == id)
+                .toList(),
+          });
+        }
+        if (action == 'contacts') {
+          final list = adminContacts
+              .where((c) => c['farmer_id'] == id)
+              .toList();
+          return jsonResponse({
+            'items': list,
+            'total': list.length,
+            'page': 1,
+            'size': list.length,
+          });
+        }
+        if (action == 'problems') {
+          final list = adminFeedback
+              .where((f) => f['farmer_id'] == id)
+              .toList();
+          return jsonResponse({
+            'items': list,
+            'total': list.length,
+            'page': 1,
+            'size': list.length,
+          });
+        }
+        return jsonResponse({'message': 'not found'}, status: 404);
+      case 'PUT':
+        if (action == null) {
+          final data = jsonDecode(request.body) as Map<String, dynamic>;
+          for (final key in ['name', 'mobile', 'village', 'district', 'state']) {
+            if (data.containsKey(key)) adminFarmer[key] = data[key];
+          }
+          if (data.containsKey('block')) adminFarmer['block'] = data['block'];
+          if (data.containsKey('farm_size')) {
+            adminFarmer['farm_size'] = data['farm_size'];
+          }
+          return jsonResponse({'success': true, 'message': 'Farmer updated'});
+        }
+        final subId = int.tryParse(segments[5]) ?? -1;
+        final data = jsonDecode(request.body) as Map<String, dynamic>;
+        if (action == 'crops') {
+          final crops = adminFarmer['crops'] as List<Map<String, dynamic>>;
+          final index = crops.indexWhere((c) => c['crop_id'] == subId);
+          if (index < 0) return jsonResponse({'message': 'not found'}, status: 404);
+          crops[index] = {...crops[index], ...data};
+          return jsonResponse({'success': true, 'message': 'Crop updated'});
+        }
+        if (action == 'soils') {
+          final index = adminSoils.indexWhere((s) => s['soil_id'] == subId);
+          if (index < 0) return jsonResponse({'message': 'not found'}, status: 404);
+          adminSoils[index] = {...adminSoils[index], ...data};
+          return jsonResponse({'success': true, 'message': 'Soil updated'});
+        }
+        return jsonResponse({'message': 'not found'}, status: 404);
+      case 'POST':
+        if (action == 'contacts') {
+          final data = jsonDecode(request.body) as Map<String, dynamic>;
+          final contact = {
+            'contact_id': _nextContactId++,
+            'farmer_id': id,
+            'channel': data['channel'],
+            'reason': data['reason'],
+            'note': data['note'],
+            'created_by': 1,
+            'created_at': '2026-08-13T00:00:00',
+          };
+          adminContacts.add(contact);
+          return jsonResponse(contact);
+        }
+        if (action == 'deactivate') {
+          return jsonResponse({'success': true, 'message': 'Farmer deactivated'});
+        }
+        if (action == 'restore') {
+          return jsonResponse({'success': true, 'message': 'Farmer restored'});
+        }
+        if (action == 'delete') {
+          return jsonResponse({
+            'farmer_id': id,
+            'name': adminFarmer['name'],
+            'crops': (adminFarmer['crops'] as List).length,
+            'soils': adminSoils.length,
+            'feedback': adminFeedback.length,
+            'contacts': adminContacts.length,
+            'notifications': adminNotifications.length,
+          });
+        }
+        return jsonResponse({'message': 'not found'}, status: 404);
+      case 'DELETE':
+        return jsonResponse({'success': true, 'message': 'Farmer deleted'});
+      default:
+        return jsonResponse({'message': 'not found'}, status: 404);
+    }
+  }
+
+  http.Response _adminProblems(http.Request request) {
+    switch (request.method) {
+      case 'GET':
+        return jsonResponse({
+          'items': adminFeedback,
+          'total': adminFeedback.length,
+          'page': 1,
+          'size': adminFeedback.length,
+        });
+      case 'POST':
+        final data = jsonDecode(request.body) as Map<String, dynamic>;
+        final item = {
+          'feedback_id': _nextFeedbackId++,
+          'user_id': 1,
+          'farmer_id': data['farmer_id'],
+          'subject': data['subject'],
+          'description': data['description'],
+          'status': 'new',
+          'priority': data['priority'] ?? 'medium',
+          'created_at': '2026-08-13T00:00:00',
+          'updated_at': null,
+        };
+        adminFeedback.add(item);
+        return jsonResponse(item);
+      default:
+        return jsonResponse({'message': 'not found'}, status: 404);
+    }
+  }
+
+  http.Response _adminProblemById(http.Request request, List<String> segments) {
+    final id = int.tryParse(segments[3]) ?? -1;
+    final index = adminFeedback.indexWhere((f) => f['feedback_id'] == id);
+    if (index < 0) return jsonResponse({'message': 'not found'}, status: 404);
+    if (request.method == 'PUT') {
+      final data = jsonDecode(request.body) as Map<String, dynamic>;
+      for (final key in ['subject', 'description', 'priority']) {
+        if (data.containsKey(key)) adminFeedback[index][key] = data[key];
+      }
+      adminFeedback[index]['updated_at'] = '2026-08-13T00:00:00';
+      return jsonResponse(adminFeedback[index]);
+    }
+    if (request.method == 'PATCH' && segments[4] == 'status') {
+      final data = jsonDecode(request.body) as Map<String, dynamic>;
+      adminFeedback[index]['status'] = data['status'];
+      adminFeedback[index]['updated_at'] = '2026-08-13T00:00:00';
+      return jsonResponse(adminFeedback[index]);
+    }
+    return jsonResponse({'message': 'not found'}, status: 404);
+  }
+
+  http.Response _adminNotifications(http.Request request) {
+    switch (request.method) {
+      case 'GET':
+        return jsonResponse({
+          'items': adminNotifications,
+          'total': adminNotifications.length,
+          'page': 1,
+          'size': adminNotifications.length,
+        });
+      case 'POST':
+        final data = jsonDecode(request.body) as Map<String, dynamic>;
+        final item = {
+          'notification_id': adminNotifications.length + 1,
+          'user_id': 1,
+          'farmer_id': null,
+          'category': data['category'],
+          'title': data['title'],
+          'message': data['message'],
+          'status': 'pending',
+          'created_by': 1,
+          'created_at': '2026-08-13T00:00:00',
+          'delivered_at': null,
+        };
+        adminNotifications.add(item);
+        return jsonResponse(item);
+      default:
+        return jsonResponse({'message': 'not found'}, status: 404);
+    }
+  }
+
+  http.Response _adminNotificationById(http.Request request, String idString) {
+    final id = int.tryParse(idString) ?? -1;
+    final index = adminNotifications.indexWhere((n) => n['notification_id'] == id);
+    if (index < 0) return jsonResponse({'message': 'not found'}, status: 404);
+    adminNotifications[index]['status'] = 'delivered';
+    adminNotifications[index]['delivered_at'] = '2026-08-13T00:00:00';
+    return jsonResponse({
+      'success': true,
+      'message': 'Notification marked as delivered',
+    });
+  }
+
+  http.Response _adminUser(http.Request request, List<String> segments) {
+    switch (request.method) {
+      case 'POST':
+        return jsonResponse({'success': true, 'message': 'User updated'});
+      case 'DELETE':
+        return jsonResponse({'success': true, 'message': 'User deleted'});
       default:
         return jsonResponse({'message': 'not found'}, status: 404);
     }

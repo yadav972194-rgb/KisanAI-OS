@@ -214,8 +214,90 @@ void main() {
       );
       await expectLater(
         client.getJson('/api/weather', (json) => json),
-        throwsA(isA<ApiException>().having((e) => e.isNetwork, 'isNetwork', true)),
+        throwsA(isA<ApiException>()
+            .having((e) => e.isNetwork, 'isNetwork', true)
+            .having((e) => e.code, 'code', ApiErrorCode.timeout)),
       );
+    });
+
+    group('P0 login / HTTP-error classification regression', () {
+      test('D: login with the production base URL keeps the backend contract',
+          () async {
+        Uri? seen;
+        final mock = MockClient((request) async {
+          seen = request.url;
+          return jsonResponse(const {
+            'access_token': 't',
+            'token_type': 'bearer',
+          });
+        });
+        final client = ApiClient(
+          baseUrl: 'https://kisanai-os.onrender.com',
+          httpClient: mock,
+        );
+        await client.postForm(
+          '/api/auth/token',
+          {
+            'grant_type': 'password',
+            'username': 'user',
+            'password': 'pass',
+          },
+          (json) => json,
+        );
+        expect(seen, isNotNull);
+        expect(seen!.scheme, 'https');
+        expect(seen!.host, 'kisanai-os.onrender.com');
+        expect(seen!.path, '/api/auth/token');
+      });
+
+      test('E: an HTTP 404 is never reported as a network error', () async {
+        final mock = MockClient(
+          (_) async => jsonResponse(
+            {'detail': {'success': false, 'message': 'not found'}},
+            status: 404,
+          ),
+        );
+        final client = clientFor(mock);
+        await expectLater(
+          client.getJson('/api/nope', (json) => json),
+          throwsA(isA<ApiException>()
+              .having((e) => e.isNetwork, 'isNetwork', false)
+              .having((e) => e.statusCode, 'statusCode', 404)),
+        );
+      });
+
+      test('E: an HTTP 500 is never reported as a network error', () async {
+        final mock = MockClient(
+          (_) async => jsonResponse(
+            {'success': false, 'message': 'boom'},
+            status: 500,
+          ),
+        );
+        final client = clientFor(mock);
+        await expectLater(
+          client.getJson('/api/weather', (json) => json),
+          throwsA(isA<ApiException>()
+              .having((e) => e.isNetwork, 'isNetwork', false)
+              .having((e) => e.statusCode, 'statusCode', 500)),
+        );
+      });
+
+      test('E: a 401 login rejection is never reported as a network error',
+          () async {
+        final mock = MockClient(
+          (_) async => jsonResponse(
+            {'detail': {'success': false, 'message': 'Invalid credentials'}},
+            status: 401,
+          ),
+        );
+        final client = clientFor(mock);
+        await expectLater(
+          client.getJson('/api/auth/token', (json) => json),
+          throwsA(isA<ApiException>()
+              .having((e) => e.isNetwork, 'isNetwork', false)
+              .having((e) => e.statusCode, 'statusCode', 401)),
+        );
+      });
     });
   });
 }

@@ -41,18 +41,19 @@ class _AssistantScreenState extends State<AssistantScreen> {
   void _ask(AssistantController controller) {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
+    _textController.clear();
     FocusScope.of(context).unfocus();
     controller.ask(text);
   }
 
   void _askSuggestion(AssistantController controller, String suggestion) {
-    _textController.text = suggestion;
+    _textController.clear();
     controller.ask(suggestion);
   }
 
   Future<void> _handleVoiceResult(String text) async {
     if (!mounted) return;
-    _textController.text = text;
+    _textController.clear();
     final controller = context.read<AssistantController>();
     controller.ask(text);
   }
@@ -97,6 +98,8 @@ class _AssistantScreenState extends State<AssistantScreen> {
                               controller, AppStrings.assistantSuggestion),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  _UserMessage(message: controller.lastUserMessage),
                   const SizedBox(height: 16),
                   _AnswerArea(
                     controller: controller,
@@ -115,6 +118,29 @@ class _AssistantScreenState extends State<AssistantScreen> {
             voiceService: voiceService,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _UserMessage extends StatelessWidget {
+  const _UserMessage({required this.message});
+
+  final String? message;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = message?.trim();
+    if (text == null || text.isEmpty) return const SizedBox.shrink();
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppTheme.primaryGreen.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Text(text, style: const TextStyle(fontSize: 15, height: 1.3)),
       ),
     );
   }

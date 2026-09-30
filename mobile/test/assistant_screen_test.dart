@@ -48,6 +48,43 @@ void main() {
     expect(find.textContaining('फसल की जानकारी दर्ज करें'), findsOneWidget);
   });
 
+  testWidgets('sending a question clears the field and shows it as a user '
+      'message', (tester) async {
+    await tester.pumpWidget(wrap(build(FakeBackend())));
+
+    await tester.enterText(find.byType(TextField), 'मेरी फसल के क्या हाल हैं?');
+    await tester.tap(find.byIcon(Icons.send));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // The submitted text appears as a user message (plus the suggestion chip
+    // that shares the same default question text).
+    expect(find.text('मेरी फसल के क्या हाल हैं?'), findsNWidgets(2));
+    // The input field is emptied after send.
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.controller!.text, isEmpty);
+  });
+
+  testWidgets('a later question replaces the earlier user message and the '
+      'field stays empty', (tester) async {
+    await tester.pumpWidget(wrap(build(FakeBackend())));
+
+    await tester.enterText(find.byType(TextField), 'पहला सवाल');
+    await tester.tap(find.byIcon(Icons.send));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.enterText(find.byType(TextField), 'दूसरा सवाल');
+    await tester.tap(find.byIcon(Icons.send));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.controller!.text, isEmpty);
+    expect(find.text('पहला सवाल'), findsNothing);
+    expect(find.text('दूसरा सवाल'), findsOneWidget);
+  });
+
   testWidgets('tapping the suggestion chip asks the default question',
       (tester) async {
     await tester.pumpWidget(wrap(build(FakeBackend())));

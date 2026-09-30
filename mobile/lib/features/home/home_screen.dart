@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../auth/auth_controller.dart';
+import '../admin_admin/admin_screen.dart';
 import '../assistant/assistant_screen.dart';
 import '../crops/crops_screen.dart';
 import '../diagnosis/diagnosis_screen.dart';
@@ -11,6 +12,7 @@ import '../diseases/diseases_screen.dart';
 import '../detection_hub/detection_hub_screen.dart';
 import '../farmers/farmers_screen.dart';
 import '../my_farm/my_farm_screen.dart';
+import '../predictions/predictions_screen.dart';
 import '../profile/profile_screen.dart';
 import '../recommendations/recommendations_screen.dart';
 import '../soils/soils_screen.dart';
@@ -66,6 +68,11 @@ class HomeScreen extends StatelessWidget {
         screen: const RecommendationsScreen(),
       ),
       _DashboardCard(
+        icon: Icons.trending_up,
+        label: AppStrings.predictionsCard,
+        screen: const PredictionsScreen(),
+      ),
+      _DashboardCard(
         icon: Icons.forum_outlined,
         label: AppStrings.assistantCard,
         screen: const AssistantScreen(),
@@ -80,6 +87,12 @@ class HomeScreen extends StatelessWidget {
         label: AppStrings.farmersCard,
         screen: const FarmersScreen(),
       ),
+      if (user?.role == 'admin')
+        _DashboardCard(
+          icon: Icons.security_outlined,
+          label: AppStrings.adminTitle,
+          screen: const AdminScreen(),
+        ),
     ];
 
     return Scaffold(

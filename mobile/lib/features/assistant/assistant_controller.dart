@@ -24,10 +24,15 @@ class AssistantController extends ChangeNotifier {
   AssistantResponse? response;
   String? errorMessage;
 
+  /// The most recently submitted question, shown as a user message in the
+  /// assistant conversation.
+  String? lastUserMessage;
+
   Future<void> ask(String text, {Map<String, dynamic>? soil}) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
 
+    lastUserMessage = trimmed;
     state = AssistantState.loading;
     errorMessage = null;
     response = null;
@@ -65,6 +70,7 @@ class AssistantController extends ChangeNotifier {
     state = AssistantState.idle;
     response = null;
     errorMessage = null;
+    lastUserMessage = null;
     notifyListeners();
   }
 }

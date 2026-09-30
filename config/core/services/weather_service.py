@@ -270,6 +270,7 @@ class WeatherService:
                 ),
                 "timezone": "auto",
             },
+            retries=3,
         )
 
         current = data.get("current", {})

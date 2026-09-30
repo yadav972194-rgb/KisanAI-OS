@@ -4,6 +4,7 @@ import 'package:kisanai/app.dart';
 import 'package:kisanai/core/network/api_client.dart';
 import 'package:kisanai/core/storage/token_storage.dart';
 import 'package:kisanai/dependencies.dart';
+import 'package:kisanai/features/assistant/assistant_screen.dart';
 import 'package:kisanai/features/splash/splash_screen.dart';
 
 import 'helpers/fake_backend.dart';
@@ -86,11 +87,25 @@ void main() {
       'मिट्टी',
       'रोग पहचान',
       'AI सलाह',
-      'रोग ज्ञान',
-      'किसान',
+      'फसल भविष्यवाणी',
     ]) {
       expect(find.text(label), findsOneWidget);
     }
+    // The farmers and diseases cards sit below the fold once the
+    // predictions card joined the grid; scroll them into view before
+    // asserting they are present on the dashboard.
+    await tester.scrollUntilVisible(
+      find.text('रोग ज्ञान'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('रोग ज्ञान'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('किसान'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('किसान'), findsOneWidget);
   });
 
   testWidgets('weather card opens the live weather screen', (tester) async {
@@ -106,6 +121,31 @@ void main() {
     expect(find.text('Delhi'), findsOneWidget);
     expect(find.text('28.5°C'), findsWidgets);
     expect(find.text('Clear'), findsWidgets);
+  });
+
+  testWidgets('assistant card opens the assistant screen with VoiceService '
+      'in scope', (tester) async {
+    // Regression: AssistantScreen watches VoiceService from the real app
+    // route pushed by HomeScreen. If the app root does not expose VoiceService
+    // this raises ProviderNotFoundError instead of opening the screen.
+    useTallSurface(tester);
+    final deps = buildDeps();
+    await tester.pumpWidget(KisanApp(dependencies: deps));
+    await passSplash(tester);
+    await login(tester);
+
+    await tester.ensureVisible(find.text('फसल सहायक'));
+    await tester.pump();
+    await tester.tap(find.text('फसल सहायक'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 150));
+
+    expect(find.byType(AssistantScreen), findsOneWidget);
+    expect(find.text('हिंदी में सवाल पूछें…'), findsOneWidget);
+    // The real VoiceService provided at the app root is in scope: on the
+    // test platform STT is unavailable, so the mic-off fallback renders
+    // instead of a ProviderNotFoundError.
+    expect(find.byIcon(Icons.mic_off), findsOneWidget);
   });
 
   testWidgets('logout from profile returns to login', (tester) async {
