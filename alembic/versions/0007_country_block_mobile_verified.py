@@ -43,7 +43,7 @@ def upgrade() -> None:
                 "mobile_verified",
                 sa.Boolean(),
                 nullable=False,
-                server_default="0",
+                server_default=sa.text("false"),
             )
         )
 

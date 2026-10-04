@@ -28,7 +28,12 @@ def upgrade() -> None:
         sa.Column("code_hash", sa.String(length=255), nullable=False),
         sa.Column("expires_at", sa.String(length=19), nullable=False),
         sa.Column("attempts", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("verified", sa.Boolean(), nullable=False, server_default="0"),
+        sa.Column(
+            "verified",
+            sa.Boolean(),
+            nullable=False,
+            server_default=sa.text("false"),
+        ),
         sa.Column("created_at", sa.String(length=19), nullable=True),
     )
     op.create_index("ix_otp_codes_mobile", "otp_codes", ["mobile"])
@@ -40,7 +45,12 @@ def upgrade() -> None:
         sa.Column("jti", sa.String(length=64), nullable=False, unique=True),
         sa.Column("created_at", sa.String(length=19), nullable=True),
         sa.Column("expires_at", sa.String(length=19), nullable=False),
-        sa.Column("revoked", sa.Boolean(), nullable=False, server_default="0"),
+        sa.Column(
+            "revoked",
+            sa.Boolean(),
+            nullable=False,
+            server_default=sa.text("false"),
+        ),
         sa.Column("revoked_at", sa.String(length=19), nullable=True),
         sa.ForeignKeyConstraint(
             ["user_id"], ["users.id"], ondelete="CASCADE"
