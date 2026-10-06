@@ -41,11 +41,13 @@ class FeedbackRepository:
         )
         return list(self.session.scalars(statement))
 
-    def list_by_user(self, user_id):
+    def list_by_user(self, user_id, page=1, size=20):
         statement = (
             select(Feedback)
             .where(Feedback.user_id == user_id)
             .order_by(Feedback.feedback_id.desc())
+            .offset((page - 1) * size)
+            .limit(size)
         )
         return list(self.session.scalars(statement))
 
@@ -74,6 +76,13 @@ class FeedbackRepository:
         statement = (
             select(func.count(Feedback.feedback_id))
             .where(Feedback.farmer_id == farmer_id)
+        )
+        return self.session.scalar(statement) or 0
+
+    def count_by_user(self, user_id):
+        statement = (
+            select(func.count(Feedback.feedback_id))
+            .where(Feedback.user_id == user_id)
         )
         return self.session.scalar(statement) or 0
 

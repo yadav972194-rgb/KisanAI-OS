@@ -47,6 +47,7 @@ class FakeBackend {
     this.failLocations = false,
     this.failLogout = false,
     this.failAdmin = false,
+    this.failFeedback = false,
     this.adminSuperAdmin = true,
     this.existingUsernames = const {'ravi'},
     this.statesList = const ['Madhya Pradesh', 'Rajasthan', 'Uttar Pradesh'],
@@ -87,6 +88,7 @@ class FakeBackend {
   bool failLocations;
   bool failLogout;
   bool failAdmin;
+  bool failFeedback;
   bool adminSuperAdmin;
   final Set<String> existingUsernames;
   int logoutCalls = 0;
@@ -183,6 +185,30 @@ class FakeBackend {
   ];
   int _nextContactId = 1;
   int _nextFeedbackId = 2;
+
+  /// In-memory state for `/api/feedback` (farmer self-service "Kisan ki Baat").
+  ///
+  /// Mirrors the real contract: only the authenticated user's own records are
+  /// served, and a POST always binds ownership from the token (never from the
+  /// client body).
+  final List<Map<String, dynamic>> myFeedback = [
+    {
+      'feedback_id': 1,
+      'user_id': 1,
+      'farmer_id': 1,
+      'subject': 'सिंचाई समस्या',
+      'description': 'पानी की कमी',
+      'status': 'new',
+      'priority': 'high',
+      'created_at': '2026-08-12T00:00:00',
+      'updated_at': null,
+    },
+  ];
+
+  /// The raw JSON body of the last `POST /api/feedback`, so tests can assert
+  /// the client never sends a `farmer_id`/`user_id`.
+  Map<String, dynamic>? lastFeedbackPayload;
+  int _nextMyFeedbackId = 2;
 
   MockClient client() => MockClient((request) async {
         if (failLogin) {
@@ -376,6 +402,8 @@ class FakeBackend {
             return _myFarm(request);
           case '/api/my-farm/crops':
             return _myFarmCrops(request);
+          case '/api/feedback':
+            return _myFeedback(request);
           case '/api/locations/countries':
             if (failLocations) {
               throw http.ClientException('connection refused');
@@ -497,6 +525,49 @@ class FakeBackend {
         myFarm = null;
         myCrops.clear();
         return jsonResponse({'success': true, 'message': 'Farm Deleted Successfully'});
+      default:
+        return jsonResponse({'message': 'not found'}, status: 404);
+    }
+  }
+
+  http.Response _myFeedback(http.Request request) {
+    if (failFeedback) {
+      throw http.ClientException('connection refused');
+    }
+    switch (request.method) {
+      case 'GET':
+        final page =
+            int.tryParse(request.url.queryParameters['page'] ?? '') ?? 1;
+        final size =
+            int.tryParse(request.url.queryParameters['size'] ?? '') ??
+                myFeedback.length;
+        final newestFirst = myFeedback.reversed.toList();
+        final items = newestFirst
+            .skip((page - 1) * size)
+            .take(size)
+            .toList();
+        return jsonResponse({
+          'items': items,
+          'total': myFeedback.length,
+          'page': page,
+          'size': size,
+        });
+      case 'POST':
+        final data = jsonDecode(request.body) as Map<String, dynamic>;
+        lastFeedbackPayload = data;
+        final item = <String, dynamic>{
+          'feedback_id': _nextMyFeedbackId++,
+          'user_id': 1,
+          'farmer_id': 1,
+          'subject': data['subject'],
+          'description': data['description'],
+          'status': 'new',
+          'priority': data['priority'] ?? 'medium',
+          'created_at': '2026-08-13T00:00:00',
+          'updated_at': null,
+        };
+        myFeedback.add(item);
+        return jsonResponse(item);
       default:
         return jsonResponse({'message': 'not found'}, status: 404);
     }

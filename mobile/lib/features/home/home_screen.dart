@@ -11,6 +11,7 @@ import '../diagnosis/diagnosis_screen.dart';
 import '../diseases/diseases_screen.dart';
 import '../detection_hub/detection_hub_screen.dart';
 import '../farmers/farmers_screen.dart';
+import '../feedback/feedback_screen.dart';
 import '../my_farm/my_farm_screen.dart';
 import '../predictions/predictions_screen.dart';
 import '../profile/profile_screen.dart';
@@ -41,6 +42,11 @@ class HomeScreen extends StatelessWidget {
         icon: Icons.wb_sunny_outlined,
         label: AppStrings.weatherCard,
         screen: const WeatherScreen(),
+      ),
+      _DashboardCard(
+        icon: Icons.rate_review_outlined,
+        label: AppStrings.feedbackCard,
+        screen: const FeedbackScreen(),
       ),
       _DashboardCard(
         icon: Icons.grass,

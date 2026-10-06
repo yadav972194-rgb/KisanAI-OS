@@ -6,7 +6,16 @@ Version: 3.4.0
 
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import (
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+)
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -77,6 +86,9 @@ from config.core.schemas import (
     FarmerCreate,
     FarmerOut,
     FarmerUpdate,
+    FeedbackCreate,
+    FeedbackListOut,
+    FeedbackOut,
     GrowthStageOut,
     MessageOut,
     MyFarmCreate,
@@ -99,6 +111,7 @@ from config.core.schemas import (
     WeatherOut,
     WeedDetectionOut,
 )
+from config.core.services.support_service import SupportService
 from config.core.services.user_service import UserService
 from config.core.services.disease_detection_service import (
     DiseaseDetectionError,
@@ -723,6 +736,51 @@ def delete_my_farm_crop(
 ):
     """Delete one of the logged-in user's own crops."""
     return _ok(MyFarmController(db).delete_crop(current_user, crop_id))
+
+
+# ==========================================================
+# Farmer Feedback API (self-service - "Kisan ki Baat")
+# ==========================================================
+
+@app.post("/api/feedback", response_model=FeedbackOut)
+def create_my_feedback(
+    data: FeedbackCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Raise a problem/feedback record for the logged-in user.
+
+    Ownership is bound server-side: any ``farmer_id`` or ``user_id``
+    supplied by the client is discarded, so a farmer can never file
+    feedback as another farmer. A farm linked through ``farmers.user_id``
+    is attached automatically; the record still belongs to the caller
+    when no farm exists yet.
+    """
+    result = _ok(SupportService(db).create_feedback_for_user(
+        current_user,
+        data.model_dump(),
+    ))
+    return result["data"]
+
+
+@app.get("/api/feedback", response_model=FeedbackListOut)
+def list_my_feedback(
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List the logged-in user's own feedback, newest first.
+
+    Rows are scoped to the authenticated user id only - never to a
+    client-supplied farmer_id - so no caller can read another farmer's
+    feedback.
+    """
+    return _ok(SupportService(db).list_feedback_for_user(
+        current_user.id,
+        page=page,
+        size=size,
+    ))
 
 
 # ==========================================================

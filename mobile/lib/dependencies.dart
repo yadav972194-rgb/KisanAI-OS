@@ -15,6 +15,7 @@ import 'features/detection/nutrient_deficiency_controller.dart';
 import 'features/detection/pest_controller.dart';
 import 'features/detection/water_stress_controller.dart';
 import 'features/detection/weed_controller.dart';
+import 'features/feedback/feedback_controller.dart';
 import 'features/my_farm/my_farm_controller.dart';
 import 'features/predictions/predictions_controller.dart';
 import 'features/recommendations/recommendations_controller.dart';
@@ -29,6 +30,7 @@ import 'services/crops_api.dart';
 import 'services/disease_detection_api.dart';
 import 'services/diseases_api.dart';
 import 'services/farmers_api.dart';
+import 'services/feedback_api.dart';
 import 'services/growth_stage_api.dart';
 import 'services/my_farm_api.dart';
 import 'services/nutrient_deficiency_api.dart';
@@ -82,6 +84,7 @@ class AppDependencies {
   late final PredictionsApi predictionsApi = PredictionsApi(apiClient);
   late final AssistantApi assistantApi = AssistantApi(apiClient);
   late final AdminApi adminApi = AdminApi(apiClient);
+  late final FeedbackApi feedbackApi = FeedbackApi(apiClient);
 
   late final ImagePickerFn imagePicker = pickImageFromGallery;
 
@@ -118,4 +121,6 @@ class AppDependencies {
       AssistantController(assistantApi, voiceService: voiceService);
   late final MyFarmController myFarmController = MyFarmController(myFarmApi);
   late final AdminController adminController = AdminController(adminApi);
+  late final FeedbackController feedbackController =
+      FeedbackController(feedbackApi);
 }

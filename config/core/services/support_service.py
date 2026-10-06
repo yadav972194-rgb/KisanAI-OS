@@ -120,6 +120,36 @@ class SupportService:
             "data": feedback.to_dict(),
         }
 
+    # ==========================================================
+    # Farmer-facing self-service (ownership bound server-side)
+    # ==========================================================
+
+    def create_feedback_for_user(self, user, data):
+        """Raise feedback on behalf of an authenticated user.
+
+        ``user_id`` and ``farmer_id`` coming from the client payload are
+        discarded: ownership always derives from the caller, and the farm
+        linked through ``farmers.user_id`` is resolved server-side. This
+        keeps a farmer from filing feedback as another farmer.
+        """
+        farm = self.farmer_repo.get_farmer_by_user_id(user.id)
+        payload = dict(data)
+        payload.pop("user_id", None)
+        payload["farmer_id"] = farm.farmer_id if farm is not None else None
+        return self.create_feedback(user.id, payload)
+
+    def list_feedback_for_user(self, user_id, page=1, size=20):
+        """List only the records raised by this user, newest first."""
+        rows = self.feedback_repo.list_by_user(user_id, page=page, size=size)
+        total = self.feedback_repo.count_by_user(user_id)
+        return {
+            "success": True,
+            "items": [row.to_dict() for row in rows],
+            "total": total,
+            "page": page,
+            "size": size,
+        }
+
     def list_feedback(self, status=None, priority=None, page=1, size=20):
         if status:
             status, error = self._validate_status(status)

@@ -280,6 +280,22 @@ class AppStrings {
   static const String activeAccount = 'सक्रिय खाता';
   static const String statusLabel = 'स्थिति';
 
+  // Farmer Feedback ("Kisan ki Baat")
+  static const String feedbackCard = 'किसान की बात';
+  static const String feedbackTitle = 'किसान की बात';
+  static const String feedbackHint =
+      'खेती की कोई समस्या या सुझाव बताएं। हमारी टीम इसे देखेगी।';
+  static const String feedbackSubjectLabel = 'विषय';
+  static const String feedbackSubjectRequired = 'विषय भरें';
+  static const String feedbackDescriptionLabel = 'विवरण';
+  static const String feedbackDescriptionRequired = 'विवरण भरें';
+  static const String feedbackPriorityLabel = 'गंभीरता';
+  static const String feedbackSubmitButton = 'सूचना भेजें';
+  static const String feedbackSubmitted = 'आपकी सूचना भेज दी गई';
+  static const String feedbackHistoryTitle = 'मेरी पिछली सूचनाएं';
+  static const String feedbackCountLabel = 'सूचनाएं';
+  static const String feedbackEmpty = 'अभी कोई सूचना नहीं भेजी गई';
+
   // Admin Control & Farmer Support
   static const String adminTitle = 'प्रबंधन';
   static const String adminSubtitle = 'प्रशासन केंद्र';
