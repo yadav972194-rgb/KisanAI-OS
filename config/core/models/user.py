@@ -8,7 +8,7 @@ Authentication / account model (Phase 3).
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, String
+from sqlalchemy import Boolean, String, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from config.core.database import Base
@@ -30,11 +30,18 @@ class User(Base):
     mobile: Mapped[str] = mapped_column(String(15))
     role: Mapped[str] = mapped_column(String(20), default="farmer")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Additive admin escalation flag (Admin Control & Farmer Support module).
+    # True = super-admin capabilities (delete, member management). Defaults
+    # to False for every account; assigned only by an existing super-admin
+    # or during bootstrap, never through the public register endpoint.
+    super_admin: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false")
+    )
     # True once the mobile number has been verified through OTP. Existing
     # accounts keep False until the farmer verifies their number; this is
     # a purely additive flag and never blocks legacy logins.
     mobile_verified: Mapped[bool] = mapped_column(
-        Boolean, default=False, server_default="0"
+        Boolean, default=False, server_default=text("false")
     )
     created_at: Mapped[str] = mapped_column(String(19), default=_now)
 

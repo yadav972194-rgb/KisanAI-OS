@@ -110,6 +110,24 @@ class ApiClient {
     );
   }
 
+  /// PATCH with a JSON body.
+  Future<T> patchJson<T>(
+    String path,
+    Map<String, dynamic> body,
+    T Function(Object? json) parse,
+  ) async {
+    final request = await _headers();
+    request.headers['Content-Type'] = 'application/json';
+    final response = await _perform(() async {
+      return _http
+          .patch(_uri(path), headers: request.headers, body: jsonEncode(body))
+          .timeout(_timeout);
+    });
+    return parse(
+      await _decode(response, path: path, requestToken: request.token),
+    );
+  }
+
   /// DELETE expecting a JSON response body.
   Future<T> deleteJson<T>(
     String path,

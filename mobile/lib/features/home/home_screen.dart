@@ -4,12 +4,14 @@ import 'package:provider/provider.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../auth/auth_controller.dart';
+import '../admin_admin/admin_screen.dart';
 import '../assistant/assistant_screen.dart';
 import '../crops/crops_screen.dart';
 import '../diagnosis/diagnosis_screen.dart';
 import '../diseases/diseases_screen.dart';
 import '../detection_hub/detection_hub_screen.dart';
 import '../farmers/farmers_screen.dart';
+import '../feedback/feedback_screen.dart';
 import '../my_farm/my_farm_screen.dart';
 import '../profile/profile_screen.dart';
 import '../recommendations/recommendations_screen.dart';
@@ -39,6 +41,11 @@ class HomeScreen extends StatelessWidget {
         icon: Icons.wb_sunny_outlined,
         label: AppStrings.weatherCard,
         screen: const WeatherScreen(),
+      ),
+      _DashboardCard(
+        icon: Icons.rate_review_outlined,
+        label: AppStrings.feedbackCard,
+        screen: const FeedbackScreen(),
       ),
       _DashboardCard(
         icon: Icons.grass,
@@ -80,6 +87,12 @@ class HomeScreen extends StatelessWidget {
         label: AppStrings.farmersCard,
         screen: const FarmersScreen(),
       ),
+      if (user?.role == 'admin')
+        _DashboardCard(
+          icon: Icons.security_outlined,
+          label: AppStrings.adminTitle,
+          screen: const AdminScreen(),
+        ),
     ];
 
     return Scaffold(

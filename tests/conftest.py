@@ -71,12 +71,18 @@ def admin_headers(client):
 
 
 @pytest.fixture(scope="session")
+def super_admin_headers(client):
+    token = _register_and_login(client, "admin", super_admin=True)
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture(scope="session")
 def user_headers(client):
     token = _register_and_login(client, "farmer")
     return {"Authorization": f"Bearer {token}"}
 
 
-def _register_and_login(client, role):
+def _register_and_login(client, role, super_admin=False):
     uniq = _uniq()
     username = f"{role}{uniq}"
 
@@ -96,6 +102,7 @@ def _register_and_login(client, role):
                 full_name="Test Admin",
                 role="admin",
                 is_active=True,
+                super_admin=super_admin,
             )
             session.add(user)
             session.commit()

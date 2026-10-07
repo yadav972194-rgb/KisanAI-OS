@@ -12,7 +12,7 @@ void main() {
   // A taller viewport so every dashboard card is actually laid out (GridView
   // lazily builds only visible children).
   void useTallSurface(WidgetTester tester) {
-    tester.view.physicalSize = const Size(1080, 2200);
+    tester.view.physicalSize = const Size(1080, 2600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
   }
@@ -82,6 +82,7 @@ void main() {
     for (final label in [
       'मेरा खेत',
       'मौसम',
+      'किसान की बात',
       'फसल',
       'मिट्टी',
       'रोग पहचान',

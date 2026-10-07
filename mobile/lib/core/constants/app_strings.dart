@@ -31,6 +31,7 @@ class AppStrings {
   static const String villageLabel = 'गाँव';
   static const String districtLabel = 'जिला';
   static const String stateLabel = 'राज्य';
+  static const String countryLabel = 'देश';
   static const String villageRequired = 'गाँव आवश्यक है';
   static const String districtRequired = 'जिला आवश्यक है';
   static const String stateRequired = 'राज्य आवश्यक है';
@@ -250,4 +251,69 @@ class AppStrings {
   static const String mobileLabel = 'मोबाइल';
   static const String activeAccount = 'सक्रिय खाता';
   static const String statusLabel = 'स्थिति';
+
+  // Farmer Feedback ("Kisan ki Baat")
+  static const String feedbackCard = 'किसान की बात';
+  static const String feedbackTitle = 'किसान की बात';
+  static const String feedbackHint =
+      'खेती की कोई समस्या या सुझाव बताएं। हमारी टीम इसे देखेगी।';
+  static const String feedbackSubjectLabel = 'विषय';
+  static const String feedbackSubjectRequired = 'विषय भरें';
+  static const String feedbackDescriptionLabel = 'विवरण';
+  static const String feedbackDescriptionRequired = 'विवरण भरें';
+  static const String feedbackPriorityLabel = 'गंभीरता';
+  static const String feedbackSubmitButton = 'सूचना भेजें';
+  static const String feedbackSubmitted = 'आपकी सूचना भेज दी गई';
+  static const String feedbackHistoryTitle = 'मेरी पिछली सूचनाएं';
+  static const String feedbackCountLabel = 'सूचनाएं';
+  static const String feedbackEmpty = 'अभी कोई सूचना नहीं भेजी गई';
+
+  // Admin Control & Farmer Support
+  static const String adminTitle = 'प्रबंधन';
+  static const String adminSubtitle = 'प्रशासन केंद्र';
+  static const String adminDirector = 'किसान सूची';
+  static const String adminProblems = 'सूचना प्रबंधन';
+  static const String adminNotifications = 'सूचनाएं / अलर्ट';
+  static const String adminAudit = 'गतिविधि लॉग';
+  static const String adminSuperAdminBadge = 'सुपर एडमिन';
+  static const String adminSearchHint = 'नाम, मोबाइल या गांव खोजें';
+  static const String adminSearch = 'खोजें';
+  static const String adminNoFarmers = 'कोई किसान नहीं मिला';
+  static const String adminFarmerProfile = 'किसान प्रोफाइल';
+  static const String adminProblemsEmpty = 'अभी कोई सूचना नहीं';
+  static const String adminNotificationsEmpty = 'अभी कोई सूचना नहीं';
+  static const String adminAuditEmpty = 'अभी कोई गतिविधि नहीं';
+  static const String adminRecordContact = 'संपर्क दर्ज करें';
+  static const String adminContactChannel = 'संपर्क माध्यम';
+  static const String adminContactReason = 'कारण (वैकल्पिक)';
+  static const String adminContactNote = 'नोट (वैकल्पिक)';
+  static const String adminStatusTransition = 'स्थिति बदलें';
+  static const String adminNewProblem = 'नई सूचना';
+  static const String adminSubjectLabel = 'विषय';
+  static const String adminDescriptionLabel = 'विवरण';
+  static const String adminPriorityLabel = 'गंभीरता';
+  static const String adminDeactivate = 'खाता बंद करें';
+  static const String adminRestore = 'खाता चालू करें';
+  static const String adminDeleteFarmer = 'किसान हटाएं';
+  static const String adminDeleteConfirm =
+      'कृपया पुष्टि करें: यह किसान का सारा डेटा (फसलें, मिट्टी, सूचनाएं) हटा देगा।';
+  static const String adminSuperAdminOnly =
+      'यह क्रिया केवल सुपर एडमिन के लिए है';
+  static const String adminActions = 'क्रियाएं';
+  static const String adminCrops = 'फसलें';
+  static const String adminSoils = 'मिट्टी';
+  static const String adminContacts = 'संपर्क';
+  static const String adminFeedback = 'सूचनाएं/शिकायतें';
+  static const String adminSaved = 'सफलतापूर्वक सेव हुआ';
+  static const String adminFarmersDirectory = 'किसान निर्देशिका';
+  static const String adminNotificationCategory = 'श्रेणी (ALERT / SYSTEM / AI_REPORT / ADVISORY)';
+  static const String adminNotificationTitle = 'शीर्षक';
+  static const String adminNotificationMessage = 'संदेश';
+  static const String adminCreateNotification = 'नई सूचना';
+  static const String adminDelivered = 'भेज दी गई';
+  static const String adminPending = 'लंबित';
+  static const String adminNoNotifications = 'कोई सूचना उपलब्ध नहीं';
+  static const String adminAuditTrail = 'गतिविधि लॉग';
+  static const String adminEditedBy = 'संपादक';
+  static const String adminGoBackToDirectory = 'सूची पर वापस जाएं';
 }

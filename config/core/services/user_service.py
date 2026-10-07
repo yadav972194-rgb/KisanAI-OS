@@ -272,6 +272,10 @@ class UserService:
             full_name="System Administrator",
             role=ROLE_ADMIN,
             is_active=True,
+            # The bootstrap account carries the super-admin escalation flag
+            # so the initial system administrator can use the delete and
+            # member-management controls of the Admin Support module.
+            super_admin=True,
         )
 
         self.repo.add(user)

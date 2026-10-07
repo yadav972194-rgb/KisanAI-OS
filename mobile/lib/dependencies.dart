@@ -8,12 +8,14 @@ import 'core/voice/voice_service.dart';
 import 'features/auth/auth_controller.dart';
 import 'features/auth/forgot_password_controller.dart';
 import 'features/assistant/assistant_controller.dart';
+import 'features/admin_admin/admin_controller.dart';
 import 'features/diagnosis/diagnosis_controller.dart';
 import 'features/detection/growth_stage_controller.dart';
 import 'features/detection/nutrient_deficiency_controller.dart';
 import 'features/detection/pest_controller.dart';
 import 'features/detection/water_stress_controller.dart';
 import 'features/detection/weed_controller.dart';
+import 'features/feedback/feedback_controller.dart';
 import 'features/my_farm/my_farm_controller.dart';
 import 'features/recommendations/recommendations_controller.dart';
 import 'features/weather/weather_controller.dart';
@@ -27,6 +29,7 @@ import 'services/crops_api.dart';
 import 'services/disease_detection_api.dart';
 import 'services/diseases_api.dart';
 import 'services/farmers_api.dart';
+import 'services/feedback_api.dart';
 import 'services/growth_stage_api.dart';
 import 'services/my_farm_api.dart';
 import 'services/nutrient_deficiency_api.dart';
@@ -36,6 +39,7 @@ import 'services/soils_api.dart';
 import 'services/water_stress_api.dart';
 import 'services/weather_api.dart';
 import 'services/weed_detection_api.dart';
+import 'services/admin_api.dart';
 
 /// Composition root for the app.
 ///
@@ -74,6 +78,8 @@ class AppDependencies {
   late final RecommendationsApi recommendationsApi =
       RecommendationsApi(apiClient);
   late final AssistantApi assistantApi = AssistantApi(apiClient);
+  late final AdminApi adminApi = AdminApi(apiClient);
+  late final FeedbackApi feedbackApi = FeedbackApi(apiClient);
 
   late final ImagePickerFn imagePicker = pickImageFromGallery;
 
@@ -107,4 +113,7 @@ class AppDependencies {
   late final AssistantController assistantController =
       AssistantController(assistantApi, voiceService: voiceService);
   late final MyFarmController myFarmController = MyFarmController(myFarmApi);
+  late final AdminController adminController = AdminController(adminApi);
+  late final FeedbackController feedbackController =
+      FeedbackController(feedbackApi);
 }
